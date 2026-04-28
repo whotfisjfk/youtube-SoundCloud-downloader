@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (بدون نیاز به کوکی)
+name: 📥 YouTube Downloader (خودکار، بدون کوکی)
 
 on:
   workflow_dispatch:
@@ -35,7 +35,10 @@ jobs:
       - name: 🔑 تولید توکن امنیتی یکبار مصرف
         run: |
           pip install youtube-trusted-session-generator
-          echo "SESSION_TOKEN=$(youtube-trusted-session-generator --oneshot)" >> $GITHUB_ENV
+          # تولید توکن و ذخیره آن در متغیر محیطی
+          SESSION_TOKEN=$(youtube-trusted-session-generator --oneshot)
+          echo "SESSION_TOKEN=${SESSION_TOKEN}" >> $GITHUB_ENV
+          echo "توکن تولید شد: ${SESSION_TOKEN}"  # این خط برای دیدن خروجی در لاگ است
 
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
