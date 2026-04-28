@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (با Proof of Work)
+name: 📥 YouTube Downloader (مستقیم و مطمئن)
 
 on:
   workflow_dispatch:
@@ -32,9 +32,15 @@ jobs:
       - name: ⚙️ نصب yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      - name: 🔑 دریافت توکن PoW
+      - name: 🔑 دریافت توکن PoW (مستقیم از باینری)
         id: get_pot
-        uses: coletdjnz/yt-dlp-po-token-action@v2
+        run: |
+          # دانلود ابزار تولید توکن از آخرین ریلیز
+          curl -sL https://github.com/coletdjnz/yt-dlp-po-token-action/releases/latest/download/generate-po-token-linux-x64.tar.gz | tar xz
+          chmod +x generate-po-token
+          PO_TOKEN=$(./generate-po-token)
+          echo "po_token=$PO_TOKEN" >> $GITHUB_OUTPUT
+          echo "توکن با موفقیت تولید شد: $PO_TOKEN"
 
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
