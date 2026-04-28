@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (موبایل - بدون خطا)
+name: 📥 YouTube Downloader (خودکار - بدون نیاز به کوکی دستی)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
           - 'video'
           - 'audio'
       folder:
-        description: '📁 پوشه ذخیره (اختیاری)'
+        description: '📁 پوشه ذخیره'
         required: false
         default: 'downloads'
 
@@ -32,14 +32,20 @@ jobs:
       - name: ⚙️ نصب yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
+      - name: 🍪 دریافت خودکار کوکی‌ها از سرویس عمومی
+        run: |
+          # استفاده از سرویس رایگان برای دریافت کوکی‌های آماده
+          curl -sL "https://yt-session-generator.vercel.app/api/cookies" -o cookies.txt
+          echo "کوکی‌ها دریافت شدند:"
+          head -n 2 cookies.txt
+
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
-          # شناسهٔ کلاینت اندروید برای دور زدن محدودیت دیتاسنتر
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
-            --extractor-args "youtube:player_client=android" \
+            --cookies cookies.txt \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -47,10 +53,8 @@ jobs:
         if: github.event.inputs.format == 'audio'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
-          yt-dlp -f bestaudio \
-            --extract-audio \
-            --audio-format mp3 \
-            --extractor-args "youtube:player_client=android" \
+          yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
+            --cookies cookies.txt \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -59,5 +63,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "${{ github.event.inputs.folder }}"
-          git commit -m "افزودن فایل از یوتیوب" || echo "هیچ فایل جدیدی نیست"
+          git commit -m "افزودن فایل از یوتیوب" || echo "فایل جدیدی وجود ندارد"
           git push
