@@ -1,0 +1,65 @@
+name: 📥 YouTube Downloader (بدون نیاز به کوکی)
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: '🔗 لینک ویدئوی یوتیوب'
+        required: true
+      format:
+        description: '🎬 خروجی'
+        required: true
+        default: 'video'
+        type: choice
+        options:
+          - 'video'
+          - 'audio'
+      folder:
+        description: '📁 پوشه ذخیره (اختیاری)'
+        required: false
+        default: 'downloads'
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 دریافت فایل‌های مخزن
+        uses: actions/checkout@v4
+
+      - name: ⚙️ نصب yt-dlp
+        uses: AnimMouse/setup-yt-dlp@v3
+
+      - name: 🔑 تولید توکن امنیتی یکبار مصرف
+        run: |
+          pip install youtube-trusted-session-generator
+          echo "SESSION_TOKEN=$(youtube-trusted-session-generator --oneshot)" >> $GITHUB_ENV
+
+      - name: 🎬 دانلود ویدئو (MP4)
+        if: github.event.inputs.format == 'video'
+        run: |
+          mkdir -p "${{ github.event.inputs.folder }}"
+          yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
+            --merge-output-format mp4 \
+            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ env.SESSION_TOKEN }}" \
+            "${{ github.event.inputs.url }}" \
+            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+
+      - name: 🎵 دانلود صوت (MP3)
+        if: github.event.inputs.format == 'audio'
+        run: |
+          mkdir -p "${{ github.event.inputs.folder }}"
+          yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
+            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ env.SESSION_TOKEN }}" \
+            "${{ github.event.inputs.url }}" \
+            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+
+      - name: 🚀 ذخیره در مخزن
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ github.event.inputs.folder }}"
+          git commit -m "افزودن فایل از یوتیوب" || echo "هیچ فایل جدیدی نیست"
+          git push
