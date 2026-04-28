@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (با کوکی + Git LFS)
+name: 📥 YouTube Downloader → Release
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
           - 'video'
           - 'audio'
       folder:
-        description: '📁 پوشه ذخیره'
+        description: '📁 پوشه موقت دانلود'
         required: false
         default: 'downloads'
 
@@ -53,15 +53,37 @@ jobs:
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
-      - name: 🚀 ذخیره در مخزن (با LFS)
+      - name: 🚀 ذخیره فایل در مخزن (با Git LFS)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # نصب و راه‌اندازی Git LFS
           sudo apt-get update && sudo apt-get install -y git-lfs
           git lfs install
-          # track کردن فایل‌های حجیم (اطمینان از فعال بودن LFS)
           git lfs track "*.mp4" "*.mp3" "*.webm" "*.mkv"
           git add .gitattributes "${{ github.event.inputs.folder }}"
           git commit -m "افزودن فایل از یوتیوب" || echo "هیچ فایل جدیدی نیست"
           git push
+
+      - name: 📦 انتشار در Release (فقط فایل جدید)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # دریافت نام فایل جدید (آخرین فایل اضافه شده در پوشه دانلود)
+          NEW_FILE=$(git diff --name-only HEAD~1 HEAD -- "${{ github.event.inputs.folder }}/" | head -1)
+          if [ -z "$NEW_FILE" ]; then
+            echo "هیچ فایل جدیدی برای انتشار وجود ندارد."
+            exit 0
+          fi
+          echo "فایل جدید برای انتشار: $NEW_FILE"
+
+          # اطمینان از نصب GitHub CLI (در runner های اوبونتو وجود دارد)
+          # اگر release با tag 'latest' وجود دارد فایل را به آن اضافه کن، وگرنه release جدید بساز
+          if gh release view latest &> /dev/null; then
+            echo "Release 'latest' پیدا شد. آپلود فایل جدید..."
+            gh release upload latest "$NEW_FILE" --clobber
+          else
+            echo "ایجاد Release جدید با tag 'latest'..."
+            gh release create latest "$NEW_FILE" \
+              --title "مجموعه دانلودهای یوتیوب" \
+              --notes "فایل‌های دانلود شده به‌صورت خودکار اینجا قرار می‌گیرند."
+          fi
