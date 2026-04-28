@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (خودکار با PoW)
+name: 📥 YouTube Downloader (با Proof of Work)
 
 on:
   workflow_dispatch:
@@ -32,9 +32,9 @@ jobs:
       - name: ⚙️ نصب yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      - name: 🔑 دریافت توکن امنیتی (Proof of Work)
+      - name: 🔑 دریافت توکن PoW
         id: get_pot
-        uses: coletdjnz/yt-dlp-get-pot-action@v2
+        uses: coletdjnz/yt-dlp-po-token-action@v2
 
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
@@ -60,5 +60,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "${{ github.event.inputs.folder }}"
-          git commit -m "افزودن فایل از یوتیوب" || echo "هیچ فایل جدیدی نیست"
+          git commit -m "افزودن فایل از یوتیوب" || echo "فایل جدیدی وجود ندارد"
           git push
