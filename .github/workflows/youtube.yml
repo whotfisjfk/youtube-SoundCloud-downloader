@@ -32,6 +32,9 @@ jobs:
       - name: ⚙️ نصب yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
+      - name: 🧹 پاکسازی پوشهٔ دانلود
+        run: rm -rf "${{ github.event.inputs.folder }}"/*
+
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
         run: |
@@ -40,18 +43,23 @@ jobs:
             --merge-output-format mp4 \
             --cookies cookies.txt \
             --restrict-filenames \
+            --force-overwrites \
             "${{ github.event.inputs.url }}" \
-            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+            -o "${{ github.event.inputs.folder }}/%(id)s.%(ext)s"
 
       - name: 🎵 دانلود صوت (MP3)
         if: github.event.inputs.format == 'audio'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
-          yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
+          yt-dlp -f "bestaudio[ext=m4a]/bestaudio/best" \
+            --audio-format mp3 \
+            --audio-quality 0 \
             --cookies cookies.txt \
             --restrict-filenames \
+            --force-overwrites \
+            --no-playlist \
             "${{ github.event.inputs.url }}" \
-            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+            -o "${{ github.event.inputs.folder }}/%(id)s.%(ext)s"
 
       - name: 🚀 ذخیره فایل در مخزن (با Git LFS)
         run: |
@@ -68,7 +76,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # دریافت نام فایل جدید (آخرین فایل اضافه شده در پوشه دانلود)
           NEW_FILE=$(git diff --name-only HEAD~1 HEAD -- "${{ github.event.inputs.folder }}/" | head -1)
           if [ -z "$NEW_FILE" ]; then
             echo "هیچ فایل جدیدی برای انتشار وجود ندارد."
@@ -76,8 +83,6 @@ jobs:
           fi
           echo "فایل جدید برای انتشار: $NEW_FILE"
 
-          # اطمینان از نصب GitHub CLI (در runner های اوبونتو وجود دارد)
-          # اگر release با tag 'latest' وجود دارد فایل را به آن اضافه کن، وگرنه release جدید بساز
           if gh release view latest &> /dev/null; then
             echo "Release 'latest' پیدا شد. آپلود فایل جدید..."
             gh release upload latest "$NEW_FILE" --clobber
