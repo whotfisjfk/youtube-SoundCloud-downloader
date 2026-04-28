@@ -39,6 +39,7 @@ jobs:
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
             --cookies cookies.txt \
+            --restrict-filenames \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -48,6 +49,7 @@ jobs:
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
             --cookies cookies.txt \
+            --restrict-filenames \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
