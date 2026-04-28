@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (via Invidious – بدون خطا)
+name: 📥 YouTube Downloader (موبایل - بدون خطا)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
           - 'video'
           - 'audio'
       folder:
-        description: '📁 پوشه ذخیره'
+        description: '📁 پوشه ذخیره (اختیاری)'
         required: false
         default: 'downloads'
 
@@ -36,27 +36,22 @@ jobs:
         if: github.event.inputs.format == 'video'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
-          # تبدیل لینک یوتیوب به معادل Invidious
-          URL="${{ github.event.inputs.url }}"
-          VIDEO_ID=$(echo "$URL" | sed -n 's/.*v=\([a-zA-Z0-9_-]*\).*/\1/p')
-          [ -z "$VIDEO_ID" ] && VIDEO_ID=$(echo "$URL" | sed -n 's/.*youtu\.be\/\([a-zA-Z0-9_-]*\).*/\1/p')
-          INVIDIOUS_URL="https://inv.nadeko.net/watch?v=${VIDEO_ID}"
-          echo "Using Invidious URL: $INVIDIOUS_URL"
+          # شناسهٔ کلاینت اندروید برای دور زدن محدودیت دیتاسنتر
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
-            "$INVIDIOUS_URL" \
+            --extractor-args "youtube:player_client=android" \
+            "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
       - name: 🎵 دانلود صوت (MP3)
         if: github.event.inputs.format == 'audio'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
-          URL="${{ github.event.inputs.url }}"
-          VIDEO_ID=$(echo "$URL" | sed -n 's/.*v=\([a-zA-Z0-9_-]*\).*/\1/p')
-          [ -z "$VIDEO_ID" ] && VIDEO_ID=$(echo "$URL" | sed -n 's/.*youtu\.be\/\([a-zA-Z0-9_-]*\).*/\1/p')
-          INVIDIOUS_URL="https://inv.nadeko.net/watch?v=${VIDEO_ID}"
-          yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
-            "$INVIDIOUS_URL" \
+          yt-dlp -f bestaudio \
+            --extract-audio \
+            --audio-format mp3 \
+            --extractor-args "youtube:player_client=android" \
+            "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
       - name: 🚀 ذخیره در مخزن
@@ -64,5 +59,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "${{ github.event.inputs.folder }}"
-          git commit -m "افزودن فایل از یوتیوب" || echo "فایل جدیدی وجود ندارد"
+          git commit -m "افزودن فایل از یوتیوب" || echo "هیچ فایل جدیدی نیست"
           git push
