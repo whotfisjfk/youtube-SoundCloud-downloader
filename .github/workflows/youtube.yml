@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (بدون نیاز به کوکی)
+name: 📥 YouTube Downloader (خودکار با PoW)
 
 on:
   workflow_dispatch:
@@ -32,10 +32,9 @@ jobs:
       - name: ⚙️ نصب yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      - name: 🔑 تولید توکن امنیتی یکبار مصرف
-        run: |
-          pip install youtube-trusted-session-generator
-          echo "SESSION_TOKEN=$(youtube-trusted-session-generator --oneshot)" >> $GITHUB_ENV
+      - name: 🔑 دریافت توکن امنیتی (Proof of Work)
+        id: get_pot
+        uses: coletdjnz/yt-dlp-get-pot-action@v2
 
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
@@ -43,7 +42,7 @@ jobs:
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
-            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ env.SESSION_TOKEN }}" \
+            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ steps.get_pot.outputs.po_token }}" \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -52,7 +51,7 @@ jobs:
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
-            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ env.SESSION_TOKEN }}" \
+            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ steps.get_pot.outputs.po_token }}" \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
