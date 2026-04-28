@@ -1,4 +1,4 @@
-name: 📥 YouTube Downloader (مستقیم و مطمئن)
+name: 📥 YouTube Downloader (via Invidious – بدون خطا)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
           - 'video'
           - 'audio'
       folder:
-        description: '📁 پوشه ذخیره (اختیاری)'
+        description: '📁 پوشه ذخیره'
         required: false
         default: 'downloads'
 
@@ -32,33 +32,31 @@ jobs:
       - name: ⚙️ نصب yt-dlp
         uses: AnimMouse/setup-yt-dlp@v3
 
-      - name: 🔑 دریافت توکن PoW (مستقیم از باینری)
-        id: get_pot
-        run: |
-          # دانلود ابزار تولید توکن از آخرین ریلیز
-          curl -sL https://github.com/coletdjnz/yt-dlp-po-token-action/releases/latest/download/generate-po-token-linux-x64.tar.gz | tar xz
-          chmod +x generate-po-token
-          PO_TOKEN=$(./generate-po-token)
-          echo "po_token=$PO_TOKEN" >> $GITHUB_OUTPUT
-          echo "توکن با موفقیت تولید شد: $PO_TOKEN"
-
       - name: 🎬 دانلود ویدئو (MP4)
         if: github.event.inputs.format == 'video'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
+          # تبدیل لینک یوتیوب به معادل Invidious
+          URL="${{ github.event.inputs.url }}"
+          VIDEO_ID=$(echo "$URL" | sed -n 's/.*v=\([a-zA-Z0-9_-]*\).*/\1/p')
+          [ -z "$VIDEO_ID" ] && VIDEO_ID=$(echo "$URL" | sed -n 's/.*youtu\.be\/\([a-zA-Z0-9_-]*\).*/\1/p')
+          INVIDIOUS_URL="https://inv.nadeko.net/watch?v=${VIDEO_ID}"
+          echo "Using Invidious URL: $INVIDIOUS_URL"
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
-            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ steps.get_pot.outputs.po_token }}" \
-            "${{ github.event.inputs.url }}" \
+            "$INVIDIOUS_URL" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
       - name: 🎵 دانلود صوت (MP3)
         if: github.event.inputs.format == 'audio'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
+          URL="${{ github.event.inputs.url }}"
+          VIDEO_ID=$(echo "$URL" | sed -n 's/.*v=\([a-zA-Z0-9_-]*\).*/\1/p')
+          [ -z "$VIDEO_ID" ] && VIDEO_ID=$(echo "$URL" | sed -n 's/.*youtu\.be\/\([a-zA-Z0-9_-]*\).*/\1/p')
+          INVIDIOUS_URL="https://inv.nadeko.net/watch?v=${VIDEO_ID}"
           yt-dlp -f bestaudio --extract-audio --audio-format mp3 \
-            --extractor-args "youtube:player_client=web;po_token=web.gvs+${{ steps.get_pot.outputs.po_token }}" \
-            "${{ github.event.inputs.url }}" \
+            "$INVIDIOUS_URL" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
       - name: 🚀 ذخیره در مخزن
