@@ -76,11 +76,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NEW_FILE=$(git diff --name-only HEAD~1 HEAD -- "${{ github.event.inputs.folder }}/" | head -1)
+          # پیدا کردن آخرین فایل اضافه شده (mp3 یا mp4) در پوشه دانلود
+          NEW_FILE=$(ls -t "${{ github.event.inputs.folder }}"/*.{mp3,mp4} 2>/dev/null | head -1)
+
           if [ -z "$NEW_FILE" ]; then
-            echo "هیچ فایل جدیدی برای انتشار وجود ندارد."
+            echo "هیچ فایلی برای انتشار وجود ندارد."
             exit 0
           fi
+
+          if [ ! -f "$NEW_FILE" ]; then
+            echo "خطا: فایل $NEW_FILE وجود ندارد."
+            exit 1
+          fi
+
           echo "فایل جدید برای انتشار: $NEW_FILE"
 
           if gh release view latest &> /dev/null; then
