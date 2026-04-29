@@ -47,16 +47,16 @@ jobs:
           PLATFORM="${{ github.event.inputs.platform }}"
           CHANNEL="${{ github.event.inputs.channel }}"
 
-          # ساخت URL جستجو
           if [ -n "$CHANNEL" ]; then
+            # کدگذاری عبارت جستجو برای URL
+            ENCODED_QUERY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${QUERY}'))")
             if [ "$PLATFORM" = "youtube" ]; then
-              SEARCH_URL="https://www.youtube.com/@${CHANNEL}/search?query=${QUERY}"
+              SEARCH_URL="https://www.youtube.com/@${CHANNEL}/search?query=${ENCODED_QUERY}"
             else
-              SEARCH_URL="https://soundcloud.com/${CHANNEL}/search?q=${QUERY}"
+              SEARCH_URL="https://soundcloud.com/${CHANNEL}/search?q=${ENCODED_QUERY}"
             fi
             echo "🔎 جستجو در کانال/کاربر: $CHANNEL"
             echo "🔗 آدرس جستجو: $SEARCH_URL"
-            # استفاده از URL مستقیم (yt-dlp آن را مانند یک پلی‌لیست پردازش می‌کند)
             yt-dlp --skip-download \
               --cookies cookies.txt \
               --playlist-end "$RESULTS" \
@@ -75,7 +75,6 @@ jobs:
               | map(.value + {index: (.key + 1)})
             ' > raw_results.json
           else
-            # جستجوی سراسری
             if [ "$PLATFORM" = "youtube" ]; then
               PREFIX="ytsearch${RESULTS}"
             else
