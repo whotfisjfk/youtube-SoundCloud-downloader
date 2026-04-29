@@ -1,4 +1,4 @@
-name: 🔍 جستجوی یوتیوب و ساندکلاد (با تاریخ شمسی و زمان نسبی)
+name: 🔍 جستجوی گوگل برای یوتیوب و ساندکلاد
 
 on:
   workflow_dispatch:
@@ -31,117 +31,150 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: ⚙️ نصب yt‑dlp و jq
-        uses: AnimMouse/setup-yt-dlp@v3
-        with:
-          ejs-node: true
-
-      - name: 🔍 جستجو با جزئیات کامل
+      - name: 🐍 نصب پایتون و کتابخانه‌های مورد نیاز
         run: |
-          RESULTS="${{ github.event.inputs.results }}"
-          QUERY="${{ github.event.inputs.query }}"
-          PLATFORM="${{ github.event.inputs.platform }}"
+          python -m pip install --upgrade pip
+          pip install jdatetime search-engine-parser requests beautifulsoup4
 
-          if [ "$PLATFORM" = "youtube" ]; then
-            PREFIX="ytsearch${RESULTS}"
-          else
-            PREFIX="scsearch${RESULTS}"
-          fi
-
-          yt-dlp --skip-download \
-            --cookies cookies.txt \
-            --print "{ \
-              \"title\": %(title)j, \
-              \"url\": %(webpage_url)j, \
-              \"uploader\": %(uploader)j, \
-              \"duration\": \"%(duration>%H:%M:%S)s\", \
-              \"upload_date\": \"%(upload_date)s\", \
-              \"timestamp\": %(timestamp)r \
-            }" \
-            "${PREFIX}:${QUERY}" 2>/dev/null |
-          jq -s '
-            sort_by(.timestamp // 0) | reverse
-            | to_entries
-            | map(.value + {index: (.key + 1)})
-          ' > raw_results.json
-
-          echo "✅ جستجو انجام شد. تعداد نتایج: $(jq length raw_results.json)"
-
-      - name: 📆 تبدیل تاریخ‌ها به شمسی و زمان نسبی
+      - name: 🔍 جستجوی گوگل و استخراج لینک‌ها
         run: |
-          pip install jdatetime
           python3 << 'EOF'
-          import json, sys
-          from datetime import datetime, timezone
-          from unittest.mock import patch
-          import re
+          import json
+          from search_engine_parser import GoogleSearch
 
-          # تبدیل تاریخ میلادی به شمسی
-          import jdatetime
+          PLATFORM = "${{ github.event.inputs.platform }}"
+          QUERY = "${{ github.event.inputs.query }}"
+          RESULTS = int("${{ github.event.inputs.results }}")
 
-          # خواندن فایل raw_results.json
-          with open('raw_results.json', 'r') as f:
-              data = json.load(f)
+          # تعیین دامنه برای جستجو
+          if PLATFORM == "youtube":
+              search_query = f"site:youtube.com {QUERY}"
+          else:
+              search_query = f"site:soundcloud.com {QUERY}"
 
-          now = datetime.now(timezone.utc)
+          print(f"🔍 در حال جستجوی گوگل برای: {search_query}")
+          
+          # انجام جستجو
+          try:
+              google_search = GoogleSearch()
+              gresults = google_search.search(search_query, num_results=RESULTS)
+          except Exception as e:
+              print(f"❌ خطا در جستجوی گوگل: {e}")
+              exit(1)
 
-          for item in data:
-              upload_date_str = item.get('upload_date', 'NA')
-              timestamp = item.get('timestamp', None)
-
-              # پردازش upload_date
-              if upload_date_str and upload_date_str != 'NA':
-                  dt = datetime.strptime(upload_date_str, '%Y%m%d').replace(tzinfo=timezone.utc)
-                  # تاریخ شمسی
-                  jdate = jdatetime.date.fromgregorian(date=dt.date())
-                  persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
-                  # تاریخ میلادی خواناتر
-                  gregorian_date = dt.strftime('%d %B %Y')
-                  # زمان نسبی
-                  diff = now - dt
-                  if diff.days == 0:
-                      if diff.seconds < 3600:
-                          relative_time = f"{diff.seconds // 60} دقیقه پیش"
-                      else:
-                          relative_time = f"{diff.seconds // 3600} ساعت پیش"
-                  elif diff.days == 1:
-                      relative_time = "دیروز"
-                  elif diff.days < 30:
-                      relative_time = f"{diff.days} روز پیش"
-                  elif diff.days < 365:
-                      relative_time = f"{diff.days // 30} ماه پیش"
-                  else:
-                      relative_time = f"{diff.days // 365} سال پیش"
-                  item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
-              elif timestamp:
-                  dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-                  jdate = jdatetime.date.fromgregorian(date=dt.date())
-                  persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
-                  gregorian_date = dt.strftime('%d %B %Y')
-                  diff = now - dt
-                  if diff.days == 0:
-                      if diff.seconds < 3600:
-                          relative_time = f"{diff.seconds // 60} دقیقه پیش"
-                      else:
-                          relative_time = f"{diff.seconds // 3600} ساعت پیش"
-                  elif diff.days == 1:
-                      relative_time = "دیروز"
-                  elif diff.days < 30:
-                      relative_time = f"{diff.days} روز پیش"
-                  elif diff.days < 365:
-                      relative_time = f"{diff.days // 30} ماه پیش"
-                  else:
-                      relative_time = f"{diff.days // 365} سال پیش"
-                  item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
+          # استخراج و پردازش نتایج
+          output = []
+          index = 1
+          for item in gresults:
+              # استخراج عنوان، لینک و توضیحات
+              title = item.get('title', 'بدون عنوان')
+              url = item.get('link', '')
+              description = item.get('description', '')
+              
+              if not url:
+                  continue
+                  
+              # اطمینان از اینکه لینک مربوط به دامنه مورد نظر است
+              if PLATFORM == "youtube" and "youtube.com" in url:
+                  pass
+              elif PLATFORM == "soundcloud" and "soundcloud.com" in url:
+                  pass
               else:
-                  item['upload_date_display'] = 'نامشخص'
+                  # اگر لینک ناخواسته بود، نادیده گرفته شود
+                  continue
 
-          # حذف فیلدهای کمکی و ذخیره فایل نهایی
+              # تلاش برای استخراج تاریخ (در صورت وجود در توضیحات)
+              # توجه: این بخش تقریبی است و ممکن است همیشه دقیق نباشد
+              upload_date_display = "نامشخص"
+
+              output.append({
+                  "index": index,
+                  "title": title,
+                  "url": url,
+                  "uploader": "",
+                  "duration": "",
+                  "upload_date": "NA",
+                  "upload_date_display": upload_date_display,
+                  "description": description
+              })
+              index += 1
+
+          # ذخیره نتایج
+          with open('search_results.json', 'w', encoding='utf-8') as f:
+              json.dump(output, f, ensure_ascii=False, indent=2)
+
+          print(f"✅ جستجو انجام شد. تعداد نتایج: {len(output)}")
+          for item in output:
+              print(f"{item['index']}. {item['title']} - {item['url']}")
+          EOF
+
+      - name: 📆 تکمیل اطلاعات و تاریخ‌ها با yt-dlp (اختیاری)
+        run: |
+          # برای دریافت دقیق تاریخ آپلود و سایر اطلاعات، می‌توانیم از yt-dlp استفاده کنیم
+          pip install yt-dlp
+          python3 << 'EOF'
+          import json
+          import subprocess
+          import sys
+
+          with open('search_results.json', 'r') as f:
+              results = json.load(f)
+
+          for item in results:
+              url = item['url']
+              if not url:
+                  continue
+              try:
+                  # دستور yt-dlp برای دریافت اطلاعات بدون دانلود
+                  cmd = [
+                      'yt-dlp', '--skip-download', '--print-json',
+                      '--no-playlist', url
+                  ]
+                  process = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                  if process.returncode == 0:
+                      info = json.loads(process.stdout)
+                      item['title'] = info.get('title', item['title'])
+                      item['uploader'] = info.get('uploader', '')
+                      item['duration'] = str(info.get('duration', ''))
+                      upload_date = info.get('upload_date', 'NA')
+                      item['upload_date'] = upload_date
+                      if upload_date and upload_date != 'NA':
+                          # تبدیل ساده تاریخ میلادی به شمسی
+                          import jdatetime
+                          from datetime import datetime, timezone
+                          dt = datetime.strptime(upload_date, '%Y%m%d').replace(tzinfo=timezone.utc)
+                          jdate = jdatetime.date.fromgregorian(date=dt.date())
+                          persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
+                          gregorian_date = dt.strftime('%d %B %Y')
+                          # محاسبه زمان نسبی
+                          now = datetime.now(timezone.utc)
+                          diff = now - dt
+                          if diff.days == 0:
+                              if diff.seconds < 3600:
+                                  relative_time = f"{diff.seconds // 60} دقیقه پیش"
+                              else:
+                                  relative_time = f"{diff.seconds // 3600} ساعت پیش"
+                          elif diff.days == 1:
+                              relative_time = "دیروز"
+                          elif diff.days < 30:
+                              relative_time = f"{diff.days} روز پیش"
+                          elif diff.days < 365:
+                              relative_time = f"{diff.days // 30} ماه پیش"
+                          else:
+                              relative_time = f"{diff.days // 365} سال پیش"
+                          item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
+                      else:
+                          item['upload_date_display'] = 'نامشخص'
+                  else:
+                      print(f"⚠️ خطا در دریافت اطلاعات برای {url}")
+              except Exception as e:
+                  print(f"⚠️ خطا در پردازش {url}: {e}")
+
           with open('search_results.json', 'w') as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
+              json.dump(results, f, ensure_ascii=False, indent=2)
 
-          print("✅ تاریخ‌ها تبدیل شدند:")
-          for item in data:
+          print("✅ اطلاعات تکمیلی با موفقیت دریافت و به‌روزرسانی شد.")
+          for item in results:
               print(f"{item['index']}. {item['title']} - {item['upload_date_display']}")
           EOF
 
@@ -150,5 +183,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add search_results.json
-          git commit -m "📋 نتایج جستجوی ${{ github.event.inputs.platform }}: ${{ github.event.inputs.query }}" || echo "بدون تغییر"
+          git commit -m "📋 نتایج جستجوی گوگل برای: ${{ github.event.inputs.query }}" || echo "بدون تغییر"
           git push
