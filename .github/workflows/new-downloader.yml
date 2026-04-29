@@ -23,7 +23,7 @@ on:
           - 'video'
           - 'audio'
       folder:
-        description: '📁 پوشهٔ موقت دانلود'
+        description: '📁 پوشه موقت دانلود'
         required: false
         default: 'downloads'
 
@@ -39,7 +39,7 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب ffmpeg (برای تبدیل فرمت‌های صوتی/تصویری)
+      - name: 🔧 نصب ffmpeg (برای تبدیل فرمت‌های صوتی)
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
@@ -47,8 +47,8 @@ jobs:
       - name: ⚙️ نصب yt‑dlp با پشتیبانی از چالش‌های JavaScript
         uses: AnimMouse/setup-yt-dlp@v3
         with:
-          ejs-node: true   # فعال‌سازی Node.js برای حل چالش یوتیوب
-          aria2: true      # افزایش سرعت دانلود
+          ejs-node: true
+          aria2: true
 
       - name: 🧹 پاکسازی پوشهٔ دانلود
         run: rm -rf "${{ github.event.inputs.folder }}"/*
@@ -99,14 +99,18 @@ jobs:
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
       # ================= ذخیره و انتشار =================
-      - name: 🚀 ذخیره در مخزن (فقط ویدئوها با LFS)
+      - name: 🚀 ذخیره در مخزن (فقط ویدئوها با LFS، صداها بدون LFS)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           sudo apt-get update && sudo apt-get install -y git-lfs
           git lfs install
-          # فقط ویدئوها را با LFS مدیریت کن (MP3 بدون LFS بماند)
-          git lfs track "*.mp4" "*.webm" "*.mkv"
+
+          # بازنویسی .gitattributes: فقط ویدئوها را با LFS ردیابی کن
+          echo "*.mp4 filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+          echo "*.webm filter=lfs diff=lfs merge=lfs -text" >> .gitattributes
+          echo "*.mkv filter=lfs diff=lfs merge=lfs -text" >> .gitattributes
+
           git add .gitattributes "${{ github.event.inputs.folder }}"
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
@@ -139,6 +143,5 @@ jobs:
               --notes "فایل‌های دانلود شده از یوتیوب و ساندکلاد به‌صورت خودکار اینجا قرار می‌گیرند."
           fi
 
-          # نمایش لینک مستقیم Release برای دانلود فایل‌های ویدیویی
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/latest"
           echo "📎 لینک دانلود همهٔ فایل‌ها (مخصوصاً ویدیوها): $RELEASE_URL"
