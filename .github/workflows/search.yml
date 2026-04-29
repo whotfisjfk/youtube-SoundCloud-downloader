@@ -1,0 +1,74 @@
+name: 🔍 جستجوی یوتیوب و ساندکلاد
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: '🌐 پلتفرم'
+        required: true
+        default: 'youtube'
+        type: choice
+        options:
+          - 'youtube'
+          - 'soundcloud'
+      query:
+        description: '🔍 عبارت جستجو'
+        required: true
+      results:
+        description: '📊 تعداد نتایج (حداکثر ۲۰)'
+        required: false
+        default: '10'
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: 📥 دریافت فایل‌های مخزن
+        uses: actions/checkout@v4
+
+      - name: ⚙️ نصب yt‑dlp و jq
+        uses: AnimMouse/setup-yt-dlp@v3
+        with:
+          ejs-node: true
+
+      - name: 🔍 جستجو و ذخیره‌سازی JSON
+        run: |
+          RESULTS="${{ github.event.inputs.results }}"
+          QUERY="${{ github.event.inputs.query }}"
+          PLATFORM="${{ github.event.inputs.platform }}"
+
+          # تولید خروجی JSON خط‌به‌خط با جفت‌های کلید-مقدار
+          if [ "$PLATFORM" = "youtube" ]; then
+            PREFIX="ytsearch${RESULTS}"
+          else
+            PREFIX="scsearch${RESULTS}"
+          fi
+
+          # هر خط خروجی یک شیء JSON خواهد بود
+          yt-dlp --flat-playlist -s \
+            --cookies cookies.txt \
+            --print "{ \
+              \"index\": %(playlist_index)s, \
+              \"title\": %(title)j, \
+              \"url\": %(webpage_url)j, \
+              \"uploader\": %(uploader)j, \
+              \"duration\": \"%(duration>%H:%M:%S)s\" \
+            }" \
+            "${PREFIX}:${QUERY}" 2>/dev/null | jq -s '.' > search_results.json
+
+          # نمایش خلاصه در لاگ
+          echo "✅ جستجو انجام شد. تعداد نتایج: $(jq length search_results.json)"
+          jq -r '.[] | "\(.index). \(.title) (\(.duration))"' search_results.json
+
+      - name: 🚀 ذخیره فایل JSON در مخزن
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add search_results.json
+          git commit -m "📋 نتایج جستجوی ${{ github.event.inputs.platform }}: ${{ github.event.inputs.query }}" || echo "بدون تغییر"
+          git push
