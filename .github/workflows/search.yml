@@ -1,4 +1,4 @@
-name: 🔍 جستجوی یوتیوب و ساندکلاد
+name: 🔍 جستجوی یوتیوب و ساندکلاد (مرتب‌شده بر اساس جدیدترین)
 
 on:
   workflow_dispatch:
@@ -36,34 +36,40 @@ jobs:
         with:
           ejs-node: true
 
-      - name: 🔍 جستجو و ذخیره‌سازی JSON
+      - name: 🔍 جستجو، مرتب‌سازی و ذخیره‌سازی JSON
         run: |
           RESULTS="${{ github.event.inputs.results }}"
           QUERY="${{ github.event.inputs.query }}"
           PLATFORM="${{ github.event.inputs.platform }}"
 
-          # تولید خروجی JSON خط‌به‌خط با جفت‌های کلید-مقدار
           if [ "$PLATFORM" = "youtube" ]; then
             PREFIX="ytsearch${RESULTS}"
           else
             PREFIX="scsearch${RESULTS}"
           fi
 
-          # هر خط خروجی یک شیء JSON خواهد بود
+          # دریافت نتایج خام و تبدیل به آرایه‌ای از اشیاء
           yt-dlp --flat-playlist -s \
             --cookies cookies.txt \
             --print "{ \
-              \"index\": %(playlist_index)s, \
               \"title\": %(title)j, \
               \"url\": %(webpage_url)j, \
               \"uploader\": %(uploader)j, \
-              \"duration\": \"%(duration>%H:%M:%S)s\" \
+              \"duration\": \"%(duration>%H:%M:%S)s\", \
+              \"upload_date\": \"%(upload_date)s\" \
             }" \
-            "${PREFIX}:${QUERY}" 2>/dev/null | jq -s '.' > search_results.json
+            "${PREFIX}:${QUERY}" 2>/dev/null |
+          jq -s '
+            # مرتب‌سازی نزولی بر اساس تاریخ (جدیدترین اول)
+            sort_by(.upload_date // "00000000") | reverse
+            # افزودن شماره ردیف جدید (از ۱)
+            | to_entries
+            | map(.value + {index: (.key + 1)})
+          ' > search_results.json
 
           # نمایش خلاصه در لاگ
           echo "✅ جستجو انجام شد. تعداد نتایج: $(jq length search_results.json)"
-          jq -r '.[] | "\(.index). \(.title) (\(.duration))"' search_results.json
+          jq -r '.[] | "\(.index). \(.title) [آپلود: \(.upload_date // "نامشخص")] (\(.duration))"' search_results.json
 
       - name: 🚀 ذخیره فایل JSON در مخزن
         run: |
