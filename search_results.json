@@ -6,7 +6,8 @@
     "duration": "00:28:15",
     "upload_date": "20260327",
     "timestamp": 1774623767,
-    "index": 1
+    "index": 1,
+    "upload_date_display": "27 March 2026 (7 فروردین 1405) - 1 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -15,7 +16,8 @@
     "duration": "00:28:15",
     "upload_date": "20260305",
     "timestamp": 1772722838,
-    "index": 2
+    "index": 2,
+    "upload_date_display": "05 March 2026 (14 اسفند 1404) - 1 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -24,7 +26,8 @@
     "duration": "00:28:15",
     "upload_date": "20260225",
     "timestamp": 1772031654,
-    "index": 3
+    "index": 3,
+    "upload_date_display": "25 February 2026 (6 اسفند 1404) - 2 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -33,7 +36,8 @@
     "duration": "00:28:15",
     "upload_date": "20260223",
     "timestamp": 1771858881,
-    "index": 4
+    "index": 4,
+    "upload_date_display": "23 February 2026 (4 اسفند 1404) - 2 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -42,7 +46,8 @@
     "duration": "00:28:15",
     "upload_date": "20260221",
     "timestamp": 1771686045,
-    "index": 5
+    "index": 5,
+    "upload_date_display": "21 February 2026 (2 اسفند 1404) - 2 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -51,16 +56,8 @@
     "duration": "00:28:15",
     "upload_date": "20260108",
     "timestamp": 1767884438,
-    "index": 6
-  },
-  {
-    "title": "اخبار ساعت شش عصر",
-    "url": "https://www.youtube.com/watch?v=Hf5-J6RvMIo",
-    "uploader": "BBC Persian",
-    "duration": "00:28:15",
-    "upload_date": "20260105",
-    "timestamp": 1767625333,
-    "index": 7
+    "index": 6,
+    "upload_date_display": "08 January 2026 (18 دی 1404) - 3 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -69,7 +66,8 @@
     "duration": "00:28:15",
     "upload_date": "20260104",
     "timestamp": 1767538840,
-    "index": 8
+    "index": 7,
+    "upload_date_display": "04 January 2026 (14 دی 1404) - 3 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -78,7 +76,8 @@
     "duration": "00:28:15",
     "upload_date": "20251231",
     "timestamp": 1767193236,
-    "index": 9
+    "index": 8,
+    "upload_date_display": "31 December 2025 (10 دی 1404) - 3 ماه پیش"
   },
   {
     "title": "اخبار ساعت شش عصر",
@@ -87,6 +86,17 @@
     "duration": "00:28:15",
     "upload_date": "20251229",
     "timestamp": 1767020478,
-    "index": 10
+    "index": 9,
+    "upload_date_display": "29 December 2025 (8 دی 1404) - 4 ماه پیش"
+  },
+  {
+    "title": "پخش زنده تلویزیون بی‌بی‌سی فارسی 2026-04-29 15:26",
+    "url": "https://www.youtube.com/watch?v=5qN1dRjatv8",
+    "uploader": "BBC Persian",
+    "duration": "NA",
+    "upload_date": "20250623",
+    "timestamp": 1750693037,
+    "index": 10,
+    "upload_date_display": "23 June 2025 (2 تیر 1404) - 10 ماه پیش"
   }
 ]
