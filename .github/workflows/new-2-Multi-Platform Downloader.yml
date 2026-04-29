@@ -1,4 +1,4 @@
-name: 🎬🎵new-2-Multi-Platform Downloader (YouTube + SoundCloud + Split Large Videos)
+name: 🎬🎵 NEW2-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ on:
           - 'video'
           - 'audio'
       folder:
-        description: '📁 پوشهٔ موقت دانلود'
+        description: '📁 پوشهٔ ذخیره'
         required: false
         default: 'downloads'
 
@@ -42,7 +42,7 @@ jobs:
       - name: 🔧 نصب ffmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg zip
 
       - name: ⚙️ نصب yt‑dlp با پشتیبانی از چالش‌های JavaScript
         uses: AnimMouse/setup-yt-dlp@v3
@@ -98,36 +98,25 @@ jobs:
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
-      # ================= تقسیم فایل‌های حجیم (> 90MB) =================
-      - name: ✂️ تقسیم ویدئوهای بزرگ به قطعات ۹۰ مگابایتی
-        id: split
+      # ================= بسته‌بندی ویدئوهای بزرگ به ZIP چندبخشی =================
+      - name: ✂️ تبدیل ویدئوهای بزرگ به ZIP چندبخشی
         run: |
-          CHUNK_SIZE=90M
           FOLDER="${{ github.event.inputs.folder }}"
-          shopt -s nullglob
           for video in "$FOLDER"/*.mp4; do
+            [ -e "$video" ] || continue
             SIZE=$(stat -c%s "$video")
-            if [ "$SIZE" -gt 94371840 ]; then   # 90 * 1024 * 1024 = 94371840 bytes
+            if [ "$SIZE" -gt 94371840 ]; then   # بزرگتر از 90MB
               BASENAME=$(basename "$video" .mp4)
-              SUBDIR="$FOLDER/${BASENAME}_parts"
-              mkdir -p "$SUBDIR"
-              echo "تقسیم فایل $video ($(numfmt --to=iec $SIZE)) به قطعات $CHUNK_SIZE ..."
-              split -d -b $CHUNK_SIZE "$video" "$SUBDIR/part"
-              # ایجاد اسکریپت ادغام برای ویندوز و لینوکس
-              echo "@echo off" > "$SUBDIR/merge.bat"
-              echo "copy /b part* \"../${BASENAME}.mp4\"" >> "$SUBDIR/merge.bat"
-              echo "echo فایل ترکیب شد: ../${BASENAME}.mp4" >> "$SUBDIR/merge.bat"
-              echo '#!/bin/bash' > "$SUBDIR/merge.sh"
-              echo "cat part* > \"../${BASENAME}.mp4\"" >> "$SUBDIR/merge.sh"
-              echo "echo فایل ترکیب شد: ../${BASENAME}.mp4" >> "$SUBDIR/merge.sh"
-              chmod +x "$SUBDIR/merge.sh"
-              # حذف فایل اصلی بزرگ
-              rm "$video"
+              ZIPNAME="$FOLDER/${BASENAME}.zip"
+              echo "بسته‌بندی $video ($(numfmt --to=iec $SIZE)) در $ZIPNAME ..."
+              zip -s 90m -j "$ZIPNAME" "$video"   # -j یعنی مسیر ذخیره نشود
+              rm "$video"   # حذف فایل اصلی بزرگ
+              echo "✅ فایل به قطعات ZIP تقسیم شد. برای بازیابی، همهٔ قطعات را دانلود کرده و فایل .zip را با WinRAR باز کنید." > "$FOLDER/${BASENAME}_README.txt"
             fi
           done
 
-      # ================= ذخیره در مخزن (بدون LFS) =================
-      - name: 🚀 ثبت فایل‌ها در مخزن (بدون LFS)
+      # ================= ذخیره در مخزن =================
+      - name: 🚀 ثبت فایل‌ها در مخزن
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -135,19 +124,14 @@ jobs:
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
 
-      # ================= انتشار در Release (فقط برای فایل‌های کوچک/تک‌بخشی) =================
-      - name: 📦 انتشار در Release (اگر فایل شکسته نشده باشد)
+      # ================= انتشار در Release (فقط برای فایل‌های یکپارچه) =================
+      - name: 📦 انتشار در Release (فایل‌های کوچک)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # پیدا کردن یک فایل منفرد (mp3 یا mp4) که در پوشه اصلی باقی مانده (بدون زیرپوشه)
           FILE=$(find "${{ github.event.inputs.folder }}" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.mp4" \) 2>/dev/null | head -1)
           if [ -z "$FILE" ]; then
-            echo "فایل بزرگ شکسته شده است؛ از Release صرف‌نظر می‌شود."
-            echo "مستقیماً از پوشهٔ '${{ github.event.inputs.folder }}' دانلود کنید."
-            exit 0
-          fi
-          if [ ! -f "$FILE" ]; then
+            echo "فایل شکسته شده است؛ از Release صرف‌نظر می‌شود. قطعات را از پوشه دانلود کنید."
             exit 0
           fi
           echo "آپلود فایل یکپارچه: $FILE"
@@ -156,7 +140,6 @@ jobs:
           else
             gh release create latest "$FILE" \
               --title "مجموعه دانلودهای چندمنظوره" \
-              --notes "فایل‌های دانلود شده از یوتیوب و ساندکلاد (در صورت عدم نیاز به شکستن) اینجا قرار می‌گیرند."
+              --notes "فایل‌های یکپارچه (زیر 90MB) اینجا قرار می‌گیرند."
           fi
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/latest"
-          echo "📎 لینک Release: $RELEASE_URL"
+          echo "📎 لینک Release: https://github.com/${{ github.repository }}/releases/tag/latest"
