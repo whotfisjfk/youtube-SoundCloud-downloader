@@ -33,18 +33,22 @@ jobs:
     permissions:
       contents: write
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # رفع اخطار Node.js 20
 
     steps:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: ⚙️ نصب و به‌روزرسانی yt‑dlp
+      - name: 🔧 نصب ffmpeg (برای تبدیل فرمت‌های صوتی/تصویری)
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          pip install --upgrade yt-dlp
-          yt-dlp --version
+
+      - name: ⚙️ نصب yt‑dlp با پشتیبانی از چالش‌های JavaScript
+        uses: AnimMouse/setup-yt-dlp@v3
+        with:
+          ejs-node: true   # فعال‌سازی Node.js برای حل چالش یوتیوب
+          aria2: true      # افزایش سرعت دانلود
 
       - name: 🧹 پاکسازی پوشهٔ دانلود
         run: rm -rf "${{ github.event.inputs.folder }}"/*
