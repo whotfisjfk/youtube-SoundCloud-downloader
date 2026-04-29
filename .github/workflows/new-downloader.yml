@@ -41,6 +41,8 @@ jobs:
 
       - name: ⚙️ نصب و به‌روزرسانی yt‑dlp
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
           pip install --upgrade yt-dlp
           yt-dlp --version
 
