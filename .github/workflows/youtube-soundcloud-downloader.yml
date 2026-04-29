@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: write
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # ← رفع اخطار Node.js 20
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # رفع اخطار Node.js 20
 
     steps:
       - name: 📥 دریافت فایل‌های مخزن
@@ -53,7 +53,6 @@ jobs:
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
             --cookies cookies.txt \
-            --restrict-filenames \
             --force-overwrites \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
@@ -66,7 +65,6 @@ jobs:
             --audio-format mp3 \
             --audio-quality 0 \
             --cookies cookies.txt \
-            --restrict-filenames \
             --force-overwrites \
             --no-playlist \
             "${{ github.event.inputs.url }}" \
