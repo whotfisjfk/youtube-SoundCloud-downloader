@@ -1,4 +1,4 @@
-name: 🔍 جستجوی گوگل ویدیو و ساندکلاد
+name: 🔍 جستجوی گوگل ویدیو و ساندکلاد (SearXNG)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
         description: '🔍 عبارت جستجو'
         required: true
       results:
-        description: '📊 تعداد نتایج'
+        description: '📊 تعداد نتایج (حداکثر ۱۵)'
         required: false
         default: '10'
 
@@ -31,114 +31,180 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: ⚙️ نصب yt‑dlp و jq
-        uses: AnimMouse/setup-yt-dlp@v3
-        with:
-          ejs-node: true
-
-      - name: 🔍 جستجو با yt-dlp و ذخیره نتایج
+      - name: 🐍 نصب ابزارهای کمکی
         run: |
-          RESULTS="${{ github.event.inputs.results }}"
-          QUERY="${{ github.event.inputs.query }}"
-          PLATFORM="${{ github.event.inputs.platform }}"
+          pip install jdatetime requests
 
-          if [ "$PLATFORM" = "youtube" ]; then
-            # جستجو در گوگل ویدیو برای یوتیوب
-            SEARCH_TERM="gvsearch${RESULTS}:${QUERY}"
-          else
-            # جستجو در ساندکلاد
-            SEARCH_TERM="scsearch${RESULTS}:${QUERY}"
-          fi
-
-          echo "🔍 در حال جستجو با yt-dlp برای: ${SEARCH_TERM}"
-
-          # دریافت اطلاعات و ذخیره به صورت JSON
-          yt-dlp --skip-download \
-            --cookies cookies.txt \
-            --print "{ \
-              \"title\": %(title)j, \
-              \"url\": %(webpage_url)j, \
-              \"uploader\": %(uploader)j, \
-              \"duration\": \"%(duration>%H:%M:%S)s\", \
-              \"upload_date\": \"%(upload_date)s\", \
-              \"timestamp\": %(timestamp)r \
-            }" \
-            "${SEARCH_TERM}" 2>/dev/null |
-          jq -s '
-            sort_by(.timestamp // 0) | reverse
-            | to_entries
-            | map(.value + {index: (.key + 1)})
-          ' > raw_results.json
-
-          echo "✅ جستجو انجام شد. تعداد نتایج: $(jq length raw_results.json)"
-
-      - name: 📆 تبدیل تاریخ‌ها و تکمیل اطلاعات
+      - name: 🔍 جستجوی گوگل ویدیو (از طریق SearXNG) و تکمیل اطلاعات
         run: |
-          pip install jdatetime
           python3 << 'EOF'
-          import json
+          import requests, json, subprocess, sys, time
           from datetime import datetime, timezone
           import jdatetime
 
-          # خواندن فایل raw_results.json
-          with open('raw_results.json', 'r') as f:
-              data = json.load(f)
+          PLATFORM = "${{ github.event.inputs.platform }}"
+          QUERY = "${{ github.event.inputs.query }}"
+          RESULTS = int("${{ github.event.inputs.results }}")
 
-          now = datetime.now(timezone.utc)
+          # ساخت عبارت جستجو
+          if PLATFORM == 'youtube':
+              search_query = f"site:youtube.com {QUERY}"
+              domain_filter = "youtube.com"
+          else:
+              search_query = f"site:soundcloud.com {QUERY}"
+              domain_filter = "soundcloud.com"
 
-          for item in data:
-              upload_date_str = item.get('upload_date', 'NA')
-              timestamp = item.get('timestamp', None)
+          # استفاده از نمونه عمومی SearXNG (لیست نمونه‌ها در https://searx.space)
+          # چند نمونه پرکاربرد و پایدار:
+          searx_instances = [
+              "https://searx.be",
+              "https://search.sapti.me",
+              "https://search.mdosch.de",
+              "https://searx.tiekoetter.com",
+              "https://searx.fmac.xyz"
+          ]
+          raw_results = []
 
-              if upload_date_str and upload_date_str != 'NA':
-                  dt = datetime.strptime(upload_date_str, '%Y%m%d').replace(tzinfo=timezone.utc)
-                  jdate = jdatetime.date.fromgregorian(date=dt.date())
-                  persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
-                  gregorian_date = dt.strftime('%d %B %Y')
-                  diff = now - dt
-                  if diff.days == 0:
-                      if diff.seconds < 3600:
-                          relative_time = f"{diff.seconds // 60} دقیقه پیش"
+          # امتحان هر نمونه تا یکی جواب دهد
+          for instance in searx_instances:
+              try:
+                  url = f"{instance}/search"
+                  params = {
+                      "q": search_query,
+                      "format": "json",
+                      "categories": "videos",
+                      "pageno": 1,
+                      "language": "all",
+                      "time_range": "",
+                      "safesearch": 0
+                  }
+                  headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+                  print(f"🔍 تلاش با {instance} ...")
+                  resp = requests.get(url, params=params, headers=headers, timeout=15)
+                  if resp.status_code == 200:
+                      data = resp.json()
+                      # SearXNG نتایج را در فیلد 'results' برمی‌گرداند
+                      if 'results' in data and len(data['results']) > 0:
+                          raw_results = data['results']
+                          print(f"✅ {len(raw_results)} نتیجه از {instance} دریافت شد.")
+                          break
                       else:
-                          relative_time = f"{diff.seconds // 3600} ساعت پیش"
-                  elif diff.days == 1:
-                      relative_time = "دیروز"
-                  elif diff.days < 30:
-                      relative_time = f"{diff.days} روز پیش"
-                  elif diff.days < 365:
-                      relative_time = f"{diff.days // 30} ماه پیش"
+                          print("⚠️ نتایج خالی بود.")
                   else:
-                      relative_time = f"{diff.days // 365} سال پیش"
-                  item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
-              elif timestamp and timestamp is not None:
-                  dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-                  jdate = jdatetime.date.fromgregorian(date=dt.date())
-                  persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
-                  gregorian_date = dt.strftime('%d %B %Y')
-                  diff = now - dt
-                  if diff.days == 0:
-                      if diff.seconds < 3600:
-                          relative_time = f"{diff.seconds // 60} دقیقه پیش"
+                      print(f"⚠️ خطای HTTP {resp.status_code}")
+              except Exception as e:
+                  print(f"⚠️ خطا در اتصال به {instance}: {e}")
+                  continue
+
+          if not raw_results:
+              print("❌ هیچ نمونه‌ای از SearXNG در دسترس نبود. جستجو متوقف شد.")
+              sys.exit(1)
+
+          # استخراج اطلاعات اولیه و فیلتر کردن
+          output = []
+          for idx, item in enumerate(raw_results[:RESULTS]):
+              url = item.get('url', '')
+              if not url or domain_filter not in url:
+                  continue
+              output.append({
+                  "index": idx + 1,
+                  "title": item.get('title', 'بدون عنوان'),
+                  "url": url,
+                  "uploader": "",
+                  "duration": "",
+                  "upload_date": "NA",
+                  "timestamp": None,
+                  "upload_date_display": "نامشخص"
+              })
+
+          # ریست شماره ایندکس
+          for i, entry in enumerate(output):
+              entry['index'] = i + 1
+
+          # حالا با yt-dlp اطلاعات دقیق هر لینک را بگیریم
+          print("🔧 دریافت اطلاعات تکمیلی با yt-dlp ...")
+          for item in output:
+              url = item['url']
+              try:
+                  # اجرای همزمان yt-dlp برای هر لینک
+                  cmd = [
+                      'yt-dlp', '--skip-download', '--print-json',
+                      '--no-playlist', '--cookies', 'cookies.txt',
+                      url
+                  ]
+                  proc = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+                  if proc.returncode == 0 and proc.stdout.strip():
+                      info = json.loads(proc.stdout)
+                      item['title'] = info.get('title', item['title'])
+                      item['uploader'] = info.get('uploader', '')
+                      dur = info.get('duration')
+                      if dur:
+                          item['duration'] = str(dur)
+                      upload_date = info.get('upload_date', 'NA')
+                      item['upload_date'] = upload_date
+                      timestamp = info.get('timestamp')
+                      item['timestamp'] = timestamp
+
+                      # پردازش تاریخ
+                      if upload_date and upload_date != 'NA':
+                          dt = datetime.strptime(upload_date, '%Y%m%d').replace(tzinfo=timezone.utc)
+                          jdate = jdatetime.date.fromgregorian(date=dt.date())
+                          persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
+                          gregorian_date = dt.strftime('%d %B %Y')
+                          now = datetime.now(timezone.utc)
+                          diff = now - dt
+                          if diff.days == 0:
+                              if diff.seconds < 3600:
+                                  relative_time = f"{diff.seconds // 60} دقیقه پیش"
+                              else:
+                                  relative_time = f"{diff.seconds // 3600} ساعت پیش"
+                          elif diff.days == 1:
+                              relative_time = "دیروز"
+                          elif diff.days < 30:
+                              relative_time = f"{diff.days} روز پیش"
+                          elif diff.days < 365:
+                              relative_time = f"{diff.days // 30} ماه پیش"
+                          else:
+                              relative_time = f"{diff.days // 365} سال پیش"
+                          item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
+                      elif timestamp:
+                          dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                          jdate = jdatetime.date.fromgregorian(date=dt.date())
+                          persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
+                          gregorian_date = dt.strftime('%d %B %Y')
+                          now = datetime.now(timezone.utc)
+                          diff = now - dt
+                          if diff.days == 0:
+                              if diff.seconds < 3600:
+                                  relative_time = f"{diff.seconds // 60} دقیقه پیش"
+                              else:
+                                  relative_time = f"{diff.seconds // 3600} ساعت پیش"
+                          elif diff.days == 1:
+                              relative_time = "دیروز"
+                          elif diff.days < 30:
+                              relative_time = f"{diff.days} روز پیش"
+                          elif diff.days < 365:
+                              relative_time = f"{diff.days // 30} ماه پیش"
+                          else:
+                              relative_time = f"{diff.days // 365} سال پیش"
+                          item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
                       else:
-                          relative_time = f"{diff.seconds // 3600} ساعت پیش"
-                  elif diff.days == 1:
-                      relative_time = "دیروز"
-                  elif diff.days < 30:
-                      relative_time = f"{diff.days} روز پیش"
-                  elif diff.days < 365:
-                      relative_time = f"{diff.days // 30} ماه پیش"
+                          item['upload_date_display'] = 'نامشخص'
                   else:
-                      relative_time = f"{diff.days // 365} سال پیش"
-                  item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative_time}"
-              else:
-                  item['upload_date_display'] = 'نامشخص'
+                      print(f"⚠️ خطا در دریافت اطلاعات برای {url}")
+              except Exception as e:
+                  print(f"⚠️ خطا در پردازش {url}: {e}")
 
-          # ذخیره فایل نهایی
-          with open('search_results.json', 'w') as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
+          # مرتب‌سازی نهایی بر اساس timestamp
+          output.sort(key=lambda x: x.get('timestamp') or 0, reverse=True)
+          for i, entry in enumerate(output):
+              entry['index'] = i + 1
 
-          print("✅ تاریخ‌ها تبدیل شدند:")
-          for item in data:
+          with open('search_results.json', 'w', encoding='utf-8') as f:
+              json.dump(output, f, ensure_ascii=False, indent=2)
+
+          print("✅ جستجوی نهایی انجام شد. تعداد نتایج:", len(output))
+          for item in output:
               print(f"{item['index']}. {item['title']} - {item['upload_date_display']}")
           EOF
 
@@ -147,5 +213,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add search_results.json
-          git commit -m "📋 نتایج جستجوی ${{ github.event.inputs.platform }}: ${{ github.event.inputs.query }}" || echo "بدون تغییر"
+          git commit -m "📋 نتایج جستجوی گوگل برای: ${{ github.event.inputs.query }}" || echo "بدون تغییر"
           git push
