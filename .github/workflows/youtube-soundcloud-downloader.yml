@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # ← رفع اخطار Node.js 20
 
     steps:
       - name: 📥 دریافت فایل‌های مخزن
