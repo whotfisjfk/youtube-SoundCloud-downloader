@@ -34,14 +34,12 @@ jobs:
       contents: write
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      FILESIR_EMAIL: ${{ secrets.FILESIR_EMAIL }}
-      FILESIR_PASSWORD: ${{ secrets.FILESIR_PASSWORD }}
 
     steps:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب ffmpeg و zip
+      - name: 🔧 نصب ffmpeg، zip و jq
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg zip jq
@@ -113,22 +111,25 @@ jobs:
             fi
           done
 
-      # ================= آپلود روی Files.ir (ابر) =================
-      - name: 🔐 لاگین به Files.ir و دریافت توکن
-        id: login
+      # ================= تست اتصال به API (اختیاری اما مفید) =================
+      - name: 🔌 تست اتصال به Files.ir API
+        env:
+          FILESIR_TOKEN: ${{ secrets.FILESIR_TOKEN }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.files.ir/auth/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"email\":\"$FILESIR_EMAIL\",\"password\":\"$FILESIR_PASSWORD\",\"token_name\":\"github-actions\"}")
-          TOKEN=$(echo "$RESPONSE" | jq -r '.user.access_token')
-          if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
-            echo "❌ خطا در دریافت توکن: $RESPONSE"
+          echo "در حال بررسی فضای ذخیره‌سازی..."
+          RESPONSE=$(curl -s -X GET "https://my.files.ir/api/user/space-usage" \
+            -H "Authorization: Bearer $FILESIR_TOKEN")
+          STATUS=$(echo "$RESPONSE" | jq -r '.status')
+          if [ "$STATUS" != "success" ]; then
+            echo "❌ خطا در ارتباط با API: $RESPONSE"
             exit 1
           fi
-          echo "TOKEN=$TOKEN" >> $GITHUB_ENV
-          echo "✅ توکن دریافت شد."
+          echo "✅ اتصال برقرار است. فضای باقی‌مانده: $(echo "$RESPONSE" | jq -r '.remaining') بایت"
 
+      # ================= آپلود روی Files.ir (ابر) =================
       - name: 📤 آپلود همه فایل‌های پوشه به Files.ir
+        env:
+          FILESIR_TOKEN: ${{ secrets.FILESIR_TOKEN }}
         run: |
           FOLDER="${{ github.event.inputs.folder }}"
           if [ ! -d "$FOLDER" ] || [ -z "$(ls -A $FOLDER)" ]; then
@@ -139,8 +140,8 @@ jobs:
           for file in "$FOLDER"/*; do
             [ -e "$file" ] || continue
             echo "⏫ آپلود: $(basename "$file")"
-            UPLOAD_RESPONSE=$(curl -s -X POST "https://api.files.ir/uploads" \
-              -H "Authorization: Bearer ${{ env.TOKEN }}" \
+            UPLOAD_RESPONSE=$(curl -s -X POST "https://my.files.ir/api/uploads" \
+              -H "Authorization: Bearer $FILESIR_TOKEN" \
               -F "file=@$file" \
               -F "parentId=null" \
               -F "workspaceId=0")
