@@ -1,0 +1,184 @@
+name: 🎬🎵 NEW2-Multi-Platform Downloader (YouTube + SoundCloud + Split + Repo + Files.ir)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: '🌐 پلتفرم'
+        required: true
+        default: 'youtube'
+        type: choice
+        options:
+          - 'youtube'
+          - 'soundcloud'
+      url:
+        description: '🔗 لینک ویدئو / آهنگ'
+        required: true
+      format:
+        description: '🎬 خروجی'
+        required: true
+        default: 'video'
+        type: choice
+        options:
+          - 'video'
+          - 'audio'
+      folder:
+        description: '📁 پوشهٔ ذخیره (هم در مخزن هم موقت)'
+        required: false
+        default: 'downloads'
+
+jobs:
+  download-upload-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      FILESIR_EMAIL: ${{ secrets.FILESIR_EMAIL }}
+      FILESIR_PASSWORD: ${{ secrets.FILESIR_PASSWORD }}
+
+    steps:
+      - name: 📥 دریافت فایل‌های مخزن
+        uses: actions/checkout@v4
+
+      - name: 🔧 نصب ffmpeg و zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg zip jq
+
+      - name: ⚙️ نصب yt‑dlp با پشتیبانی از چالش‌های JavaScript
+        uses: AnimMouse/setup-yt-dlp@v3
+        with:
+          ejs-node: true
+          aria2: true
+
+      - name: 🧹 پاکسازی پوشهٔ دانلود (برای جلوگیری از شلوغی مخزن)
+        run: rm -rf "${{ github.event.inputs.folder }}" && mkdir -p "${{ github.event.inputs.folder }}"
+
+      # ================= YouTube =================
+      - name: ▶️ یوتیوب | دانلود ویدئو (MP4)
+        if: github.event.inputs.platform == 'youtube' && github.event.inputs.format == 'video'
+        run: |
+          yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
+            --merge-output-format mp4 \
+            --cookies cookies.txt \
+            --force-overwrites \
+            "${{ github.event.inputs.url }}" \
+            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+
+      - name: ▶️ یوتیوب | دانلود صوت (MP3)
+        if: github.event.inputs.platform == 'youtube' && github.event.inputs.format == 'audio'
+        run: |
+          yt-dlp -f "bestaudio[ext=m4a]/bestaudio/best" \
+            --audio-format mp3 \
+            --audio-quality 0 \
+            --cookies cookies.txt \
+            --force-overwrites \
+            --no-playlist \
+            "${{ github.event.inputs.url }}" \
+            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+
+      # ================= SoundCloud =================
+      - name: ☁️ ساندکلاد | دانلود صوت (MP3)
+        if: github.event.inputs.platform == 'soundcloud' && github.event.inputs.format == 'audio'
+        run: |
+          yt-dlp -x --audio-format mp3 --audio-quality 0 \
+            --no-playlist \
+            --force-ipv4 \
+            "${{ github.event.inputs.url }}" \
+            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+
+      - name: ☁️ ساندکلاد | دانلود ویدئو (در صورت وجود)
+        if: github.event.inputs.platform == 'soundcloud' && github.event.inputs.format == 'video'
+        run: |
+          yt-dlp -f bestvideo+bestaudio/best --merge-output-format mp4 \
+            --no-playlist \
+            "${{ github.event.inputs.url }}" \
+            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
+
+      # ================= بسته‌بندی ویدئوهای بزرگ به ZIP چندبخشی =================
+      - name: ✂️ تبدیل ویدئوهای بزرگ به ZIP چندبخشی
+        run: |
+          FOLDER="${{ github.event.inputs.folder }}"
+          for video in "$FOLDER"/*.mp4; do
+            [ -e "$video" ] || continue
+            SIZE=$(stat -c%s "$video")
+            if [ "$SIZE" -gt 94371840 ]; then   # بزرگتر از 90MB
+              BASENAME=$(basename "$video" .mp4)
+              ZIPNAME="$FOLDER/${BASENAME}.zip"
+              echo "📦 بسته‌بندی $video ($(numfmt --to=iec $SIZE)) در $ZIPNAME ..."
+              zip -s 90m -j "$ZIPNAME" "$video"
+              rm "$video"
+              echo "✅ فایل به قطعات ZIP تقسیم شد. برای بازیابی، همهٔ قطعات را دانلود کرده و فایل .zip را با WinRAR باز کنید." > "$FOLDER/${BASENAME}_README.txt"
+            fi
+          done
+
+      # ================= آپلود روی Files.ir (ابر) =================
+      - name: 🔐 لاگین به Files.ir و دریافت توکن
+        id: login
+        run: |
+          RESPONSE=$(curl -s -X POST "https://api.files.ir/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$FILESIR_EMAIL\",\"password\":\"$FILESIR_PASSWORD\",\"token_name\":\"github-actions\"}")
+          TOKEN=$(echo "$RESPONSE" | jq -r '.user.access_token')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
+            echo "❌ خطا در دریافت توکن: $RESPONSE"
+            exit 1
+          fi
+          echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+          echo "✅ توکن دریافت شد."
+
+      - name: 📤 آپلود همه فایل‌های پوشه به Files.ir
+        run: |
+          FOLDER="${{ github.event.inputs.folder }}"
+          if [ ! -d "$FOLDER" ] || [ -z "$(ls -A $FOLDER)" ]; then
+            echo "⚠️ پوشه خالی است، چیزی برای آپلود وجود ندارد."
+            exit 0
+          fi
+
+          for file in "$FOLDER"/*; do
+            [ -e "$file" ] || continue
+            echo "⏫ آپلود: $(basename "$file")"
+            UPLOAD_RESPONSE=$(curl -s -X POST "https://api.files.ir/uploads" \
+              -H "Authorization: Bearer ${{ env.TOKEN }}" \
+              -F "file=@$file" \
+              -F "parentId=null" \
+              -F "workspaceId=0")
+            STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.status')
+            if [ "$STATUS" == "success" ]; then
+              FILE_ID=$(echo "$UPLOAD_RESPONSE" | jq -r '.fileEntry.id')
+              echo "✅ آپلود شد: $(basename "$file") (ID: $FILE_ID)"
+            else
+              echo "❌ خطا در آپلود $(basename "$file"): $UPLOAD_RESPONSE"
+              exit 1
+            fi
+          done
+
+      # ================= ذخیره فایل‌ها در مخزن گیت‌هاب =================
+      - name: 🚀 ثبت فایل‌ها در مخزن
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ github.event.inputs.folder }}"
+          git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
+          git push
+
+      # ================= انتشار در Release (فقط برای فایل‌های یکپارچه) =================
+      - name: 📦 انتشار در Release (فایل‌های کوچک)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE=$(find "${{ github.event.inputs.folder }}" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.mp4" \) 2>/dev/null | head -1)
+          if [ -z "$FILE" ]; then
+            echo "فایل شکسته شده است؛ از Release صرف‌نظر می‌شود. قطعات را از پوشه دانلود کنید."
+            exit 0
+          fi
+          echo "آپلود فایل یکپارچه: $FILE"
+          if gh release view latest &> /dev/null; then
+            gh release upload latest "$FILE" --clobber
+          else
+            gh release create latest "$FILE" \
+              --title "مجموعه دانلودهای چندمنظوره" \
+              --notes "فایل‌های یکپارچه (زیر 90MB) اینجا قرار می‌گیرند."
+          fi
+          echo "📎 لینک Release: https://github.com/${{ github.repository }}/releases/tag/latest"
