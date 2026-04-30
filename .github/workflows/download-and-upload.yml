@@ -39,10 +39,10 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب ffmpeg، zip و jq
+      - name: 🔧 نصب ffmpeg، zip، jq و ابزارهای شبکه
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg zip jq
+          sudo apt-get install -y ffmpeg zip jq dnsutils curl
 
       - name: ⚙️ نصب yt‑dlp با پشتیبانی از چالش‌های JavaScript
         uses: AnimMouse/setup-yt-dlp@v3
@@ -111,22 +111,20 @@ jobs:
             fi
           done
 
-      # ================= تست اتصال به API (اختیاری اما مفید) =================
-      - name: 🔌 تست اتصال به Files.ir API
+      # ================= تست اتصال به API (بدون شکست workflow در صورت خطا) =================
+      - name: 🔌 تست اتصال به Files.ir API (غیر اجباری)
         env:
           FILESIR_TOKEN: ${{ secrets.FILESIR_TOKEN }}
+        continue-on-error: true
         run: |
-          echo "در حال بررسی فضای ذخیره‌سازی..."
-          RESPONSE=$(curl -s -X GET "https://my.files.ir/api/user/space-usage" \
-            -H "Authorization: Bearer $FILESIR_TOKEN")
-          STATUS=$(echo "$RESPONSE" | jq -r '.status')
-          if [ "$STATUS" != "success" ]; then
-            echo "❌ خطا در ارتباط با API: $RESPONSE"
-            exit 1
-          fi
-          echo "✅ اتصال برقرار است. فضای باقی‌مانده: $(echo "$RESPONSE" | jq -r '.remaining') بایت"
+          echo "=== بررسی DNS api.files.ir ==="
+          nslookup api.files.ir || echo "DNS lookup failed"
+          echo "=== ارسال درخواست تست با timeout 20 ثانیه ==="
+          curl -v --connect-timeout 20 --max-time 30 -A "Mozilla/5.0" \
+            "https://api.files.ir/user/space-usage" \
+            -H "Authorization: Bearer $FILESIR_TOKEN" || echo "تست اتصال ناموفق (ادامه می‌دهیم)"
 
-      # ================= آپلود روی Files.ir (ابر) =================
+      # ================= آپلود روی Files.ir با آدرس api.files.ir =================
       - name: 📤 آپلود همه فایل‌های پوشه به Files.ir
         env:
           FILESIR_TOKEN: ${{ secrets.FILESIR_TOKEN }}
@@ -140,17 +138,23 @@ jobs:
           for file in "$FOLDER"/*; do
             [ -e "$file" ] || continue
             echo "⏫ آپلود: $(basename "$file")"
-            UPLOAD_RESPONSE=$(curl -s -X POST "https://my.files.ir/api/uploads" \
+            UPLOAD_RESPONSE=$(curl -s --connect-timeout 30 --max-time 300 \
+              -X POST "https://api.files.ir/uploads" \
               -H "Authorization: Bearer $FILESIR_TOKEN" \
+              -H "User-Agent: Mozilla/5.0 (compatible; GitHubActions/1.0)" \
               -F "file=@$file" \
               -F "parentId=null" \
               -F "workspaceId=0")
+            
             STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.status')
             if [ "$STATUS" == "success" ]; then
               FILE_ID=$(echo "$UPLOAD_RESPONSE" | jq -r '.fileEntry.id')
               echo "✅ آپلود شد: $(basename "$file") (ID: $FILE_ID)"
             else
               echo "❌ خطا در آپلود $(basename "$file"): $UPLOAD_RESPONSE"
+              # در صورت تمایل می‌توانید خطا را نادیده بگیرید: 
+              # echo "ادامه می‌دهیم..."
+              # اما برای اطمینان از موفقیت، اینجا exit 1 می‌گذاریم:
               exit 1
             fi
           done
