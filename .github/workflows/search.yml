@@ -1,4 +1,4 @@
-name: 🔍 جستجوی یوتیوب و ساندکلاد (فیلتر آپلودکننده)
+name: 📺 دریافت آخرین ویدیوهای کانال (یوتیوب/ساندکلاد)
 
 on:
   workflow_dispatch:
@@ -11,20 +11,16 @@ on:
         options:
           - 'youtube'
           - 'soundcloud'
-      query:
-        description: '🔍 عبارت جستجو'
+      channel:
+        description: '🔗 آدرس یا هندل کانال (مثال: https://www.youtube.com/@BBCNewsPersian یا BBCNewsPersian یا soundcloud.com/user)'
         required: true
-      uploader_filter:
-        description: '✏️ فیلتر آپلودکننده (اختیاری) – مثلاً BBC Persian'
-        required: false
-        default: ''
       results:
-        description: '📊 تعداد نتایج (حداکثر ۱۰)'
+        description: '📊 تعداد ویدیوهای آخر (حداکثر ۱۰)'
         required: false
         default: '10'
 
 jobs:
-  search:
+  fetch:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,50 +36,64 @@ jobs:
         with:
           ejs-node: true
 
-      - name: 🔍 جستجو، فیلتر و ذخیره‌سازی
+      - name: 🔍 دریافت آخرین ویدیوهای کانال
         run: |
           RESULTS="${{ github.event.inputs.results }}"
-          QUERY="${{ github.event.inputs.query }}"
           PLATFORM="${{ github.event.inputs.platform }}"
-          UPLOADER_FILTER="${{ github.event.inputs.uploader_filter }}"
+          CHANNEL_INPUT="${{ github.event.inputs.channel }}"
 
+          # ساخت URL مناسب و گزینه‌های yt-dlp بر اساس پلتفرم
           if [ "$PLATFORM" = "youtube" ]; then
-            PREFIX="ytsearch${RESULTS}"
+            # اگر کاربر فقط نام کانال داده باشد (مثل BBCNewsPersian) آن را به آدرس کامل تبدیل کن
+            if [[ "$CHANNEL_INPUT" != *"youtube.com"* ]]; then
+              # حذف @ اول اگر وجود داشت
+              CHANNEL_CLEAN="${CHANNEL_INPUT#@}"
+              CHANNEL_URL="https://www.youtube.com/@${CHANNEL_CLEAN}/videos"
+            else
+              CHANNEL_URL="$CHANNEL_INPUT"
+              # اگر آدرس کامل شامل /videos نبود اضافه کن
+              if [[ "$CHANNEL_URL" != *"/videos" ]]; then
+                CHANNEL_URL="${CHANNEL_URL}/videos"
+              fi
+            fi
+            PREFIX=""
           else
-            PREFIX="scsearch${RESULTS}"
+            # SoundCloud: آدرس باید به صورت soundcloud.com/username باشد
+            if [[ "$CHANNEL_INPUT" != *"soundcloud.com"* ]]; then
+              CHANNEL_URL="https://soundcloud.com/${CHANNEL_INPUT#@}"
+            else
+              CHANNEL_URL="$CHANNEL_INPUT"
+            fi
+            PREFIX=""
           fi
 
-          # جستجوی سراسری
-          yt-dlp --skip-download \
-            --cookies cookies.txt \
-            --print "{ \
-              \"title\": %(title)j, \
-              \"url\": %(webpage_url)j, \
-              \"uploader\": %(uploader)j, \
-              \"duration\": \"%(duration>%H:%M:%S)s\", \
-              \"upload_date\": \"%(upload_date)s\", \
-              \"timestamp\": %(timestamp)r \
-            }" \
-            "${PREFIX}:${QUERY}" 2>/dev/null |
+          echo "📡 در حال دریافت از: $CHANNEL_URL"
+
+          # دریافت اطلاعات ویدیوها (flat playlist)
+          yt-dlp --flat-playlist \
+            --playlist-end "$RESULTS" \
+            --dump-json \
+            --skip-download \
+            "$CHANNEL_URL" 2>/dev/null | \
           jq -s '
-            # مرتب‌سازی نزولی بر اساس timestamp
-            sort_by(.timestamp // 0) | reverse
-            | to_entries
-            | map(.value + {index: (.key + 1)})
+            # اگر کانال معتبر نباشد، خروجی خالی است
+            map({
+              title: .title,
+              url: .webpage_url,
+              uploader: .uploader,
+              duration: (.duration // 0),
+              timestamp: .timestamp,
+              upload_date: .upload_date
+            })
           ' > raw_results.json
 
-          # اعمال فیلتر آپلودکننده در صورت ورود
-          if [ -n "$UPLOADER_FILTER" ]; then
-            jq --arg uploader "$UPLOADER_FILTER" '
-              map(select(.uploader == $uploader))
-              | to_entries
-              | map(.value + {index: (.key + 1)})
-            ' raw_results.json > filtered.json
-            mv filtered.json raw_results.json
-            echo "🎯 فیلتر آپلودکننده اعمال شد: $UPLOADER_FILTER"
+          # بررسی وجود نتایج
+          if [ $(jq length raw_results.json) -eq 0 ]; then
+            echo "❌ هیچ ویدیویی یافت نشد. آدرس کانال را بررسی کنید."
+            exit 1
           fi
 
-          echo "✅ جستجو انجام شد. تعداد نتایج: $(jq length raw_results.json)"
+          echo "✅ تعداد ویدیوهای یافت شده: $(jq length raw_results.json)"
 
       - name: 📆 تبدیل تاریخ‌ها به شمسی و زمان نسبی
         run: |
@@ -93,46 +103,59 @@ jobs:
           from datetime import datetime, timezone
           import jdatetime
 
-          with open('raw_results.json', 'r') as f:
+          with open('raw_results.json', 'r', encoding='utf-8') as f:
               data = json.load(f)
 
           now = datetime.now(timezone.utc)
 
-          for item in data:
+          for idx, item in enumerate(data, start=1):
               ts = item.get('timestamp')
-              upload_date_str = item.get('upload_date', 'NA')
+              upload_date_str = item.get('upload_date', '')
               if ts:
                   dt = datetime.fromtimestamp(ts, tz=timezone.utc)
                   upload_date_str = dt.strftime('%Y%m%d')
-              if upload_date_str and upload_date_str != 'NA':
+              elif upload_date_str and len(upload_date_str) == 8:
                   dt = datetime.strptime(upload_date_str, '%Y%m%d').replace(tzinfo=timezone.utc)
-                  jdate = jdatetime.date.fromgregorian(date=dt.date())
-                  persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
-                  gregorian_date = dt.strftime('%d %B %Y')
-                  diff = now - dt
-                  if diff.days == 0:
-                      if diff.seconds < 3600:
-                          relative = f"{diff.seconds // 60} دقیقه پیش"
-                      else:
-                          relative = f"{diff.seconds // 3600} ساعت پیش"
-                  elif diff.days == 1:
-                      relative = "دیروز"
-                  elif diff.days < 30:
-                      relative = f"{diff.days} روز پیش"
-                  elif diff.days < 365:
-                      relative = f"{diff.days // 30} ماه پیش"
-                  else:
-                      relative = f"{diff.days // 365} سال پیش"
-                  item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative}"
               else:
                   item['upload_date_display'] = 'نامشخص'
+                  item['index'] = idx
+                  continue
 
+              # تاریخ شمسی
+              jdate = jdatetime.date.fromgregorian(date=dt.date())
+              persian_date = f"{jdate.day} {jdate.j_months_fa[jdate.month-1]} {jdate.year}"
+              gregorian_date = dt.strftime('%d %B %Y')
+
+              # زمان نسبی
+              diff = now - dt
+              if diff.days == 0:
+                  if diff.seconds < 60:
+                      relative = f"{diff.seconds} ثانیه پیش"
+                  elif diff.seconds < 3600:
+                      relative = f"{diff.seconds // 60} دقیقه پیش"
+                  else:
+                      relative = f"{diff.seconds // 3600} ساعت پیش"
+              elif diff.days == 1:
+                  relative = "دیروز"
+              elif diff.days < 30:
+                  relative = f"{diff.days} روز پیش"
+              elif diff.days < 365:
+                  relative = f"{diff.days // 30} ماه پیش"
+              else:
+                  relative = f"{diff.days // 365} سال پیش"
+
+              item['upload_date_display'] = f"{gregorian_date} ({persian_date}) - {relative}"
+              item['index'] = idx
+
+          # ذخیره نتایج نهایی
           with open('search_results.json', 'w', encoding='utf-8') as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
 
-          print("✅ تاریخ‌ها تبدیل شدند:")
+          print("✅ نتایج نهایی (۱۰ ویدیوی آخر):")
           for item in data:
-              print(f"{item['index']}. {item['title']} - {item['upload_date_display']}")
+              print(f"{item['index']}. {item['title']}")
+              print(f"   {item['upload_date_display']}")
+              print(f"   {item['url']}\n")
           EOF
 
       - name: 🚀 ذخیره فایل JSON در مخزن
@@ -140,5 +163,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add search_results.json
-          git commit -m "📋 نتایج جستجوی ${{ github.event.inputs.platform }}: ${{ github.event.inputs.query }}" || echo "بدون تغییر"
+          git commit -m "📋 آخرین ویدیوهای ${{ github.event.inputs.platform }} کانال ${{ github.event.inputs.channel }}" || echo "بدون تغییر"
           git push
