@@ -42,23 +42,19 @@ jobs:
           PLATFORM="${{ github.event.inputs.platform }}"
           CHANNEL_INPUT="${{ github.event.inputs.channel }}"
 
-          # ساخت URL مناسب و گزینه‌های yt-dlp بر اساس پلتفرم
+          # ساخت URL مناسب بر اساس پلتفرم
           if [ "$PLATFORM" = "youtube" ]; then
-            # اگر کاربر فقط نام کانال داده باشد (مثل BBCNewsPersian) آن را به آدرس کامل تبدیل کن
+            # اگر کاربر آدرس کامل نداده باشد
             if [[ "$CHANNEL_INPUT" != *"youtube.com"* ]]; then
-              # حذف @ اول اگر وجود داشت
+              # حذف @ اضافی اول (اگر وجود داشته باشد)
               CHANNEL_CLEAN="${CHANNEL_INPUT#@}"
-              CHANNEL_URL="https://www.youtube.com/@${CHANNEL_CLEAN}/videos"
+              CHANNEL_URL="https://www.youtube.com/@${CHANNEL_CLEAN}"
             else
               CHANNEL_URL="$CHANNEL_INPUT"
-              # اگر آدرس کامل شامل /videos نبود اضافه کن
-              if [[ "$CHANNEL_URL" != *"/videos" ]]; then
-                CHANNEL_URL="${CHANNEL_URL}/videos"
-              fi
             fi
             PREFIX=""
           else
-            # SoundCloud: آدرس باید به صورت soundcloud.com/username باشد
+            # SoundCloud
             if [[ "$CHANNEL_INPUT" != *"soundcloud.com"* ]]; then
               CHANNEL_URL="https://soundcloud.com/${CHANNEL_INPUT#@}"
             else
@@ -69,14 +65,16 @@ jobs:
 
           echo "📡 در حال دریافت از: $CHANNEL_URL"
 
-          # دریافت اطلاعات ویدیوها (flat playlist)
+          # دریافت اطلاعات ویدیوها با yt-dlp (گزینه‌های پایدارتر)
           yt-dlp --flat-playlist \
             --playlist-end "$RESULTS" \
             --dump-json \
             --skip-download \
+            --ignore-errors \
+            --no-check-certificate \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
             "$CHANNEL_URL" 2>/dev/null | \
           jq -s '
-            # اگر کانال معتبر نباشد، خروجی خالی است
             map({
               title: .title,
               url: .webpage_url,
@@ -88,12 +86,18 @@ jobs:
           ' > raw_results.json
 
           # بررسی وجود نتایج
-          if [ $(jq length raw_results.json) -eq 0 ]; then
-            echo "❌ هیچ ویدیویی یافت نشد. آدرس کانال را بررسی کنید."
+          COUNT=$(jq length raw_results.json)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "❌ هیچ ویدیویی یافت نشد."
+            echo "🔍 لطفاً بررسی کنید:"
+            echo "   1. آدرس یا هندل کانال دقیق و صحیح باشد (مثلاً @BBCNewsPersian حروف بزرگ مهم است)"
+            echo "   2. کانال عمومی باشد و ویدیو داشته باشد"
+            echo "   3. در صورت استفاده از هندل، آن را با @ یا بدون @ وارد کنید (مثال: BBCNewsPersian یا @BBCNewsPersian)"
+            echo "   4. اگر از آدرس کامل استفاده می‌کنید، به فرم https://www.youtube.com/@channelname باشد"
             exit 1
           fi
 
-          echo "✅ تعداد ویدیوهای یافت شده: $(jq length raw_results.json)"
+          echo "✅ تعداد ویدیوهای یافت شده: $COUNT"
 
       - name: 📆 تبدیل تاریخ‌ها به شمسی و زمان نسبی
         run: |
