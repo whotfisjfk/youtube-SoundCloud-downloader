@@ -19,21 +19,17 @@ def save_processed(hashes):
         for h in hashes:
             f.write(h + "\n")
 
-def parse_line(line):
+def extract_info(line):
     """
-    خط نمونه:
-    timestamp | youtube | title | rel_time | url
-    یا
-    timestamp | soundcloud | title | rel_time | url
-    برمی‌گرداند (platform, url)
+    با استفاده از rsplit از سمت راست، url و پلتفرم را به صورت امن استخراج می‌کند.
     """
-    parts = line.split(" | ")
-    if len(parts) >= 5:
-        plat = parts[1].strip()
-        url = parts[-1].strip()
-        if plat in ("youtube", "soundcloud") and url.startswith("https://"):
-            return plat, url
-    return None, None
+    parts = line.rsplit(" | ", 3)
+    if len(parts) < 4:
+        return None, None
+    url = parts[-1].strip()
+    # پلتفرم را از بخش‌های ابتدایی حدس می‌زنیم
+    platform = "youtube" if "youtube.com" in url else "soundcloud"
+    return platform, url
 
 def download_audio(platform, url):
     Path(DEST_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -50,8 +46,7 @@ def download_audio(platform, url):
             url,
             "-o", f"{DEST_FOLDER}/%(title)s.%(ext)s"
         ]
-    elif platform == "soundcloud":
-        # بر اساس ورک‌فلوی Multi-Platform Downloader برای صوت ساندکلاد
+    else:  # soundcloud
         cmd = [
             "yt-dlp",
             "-x",
@@ -62,10 +57,6 @@ def download_audio(platform, url):
             url,
             "-o", f"{DEST_FOLDER}/%(title)s.%(ext)s"
         ]
-    else:
-        print(f"❌ پلتفرم ناشناخته: {platform}")
-        return
-
     print(f"⬇️ دانلود صوت {platform}: {url}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
@@ -84,9 +75,9 @@ def main():
     new_hashes = []
 
     for line in lines:
-        plat, url = parse_line(line)
+        plat, url = extract_info(line)
         if not url:
-            print(f"⚠️ نتوانستم پلتفرم/لینک را از خط زیر استخراج کنم:\n{line}")
+            print(f"⚠️ نتوانستم لینکی از خط زیر استخراج کنم:\n{line}")
             continue
         h = hashlib.md5(url.encode()).hexdigest()
         if h in processed:
