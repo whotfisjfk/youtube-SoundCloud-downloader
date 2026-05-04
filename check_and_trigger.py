@@ -2,18 +2,17 @@ import os
 import requests
 import hashlib
 from pathlib import Path
-from urllib.parse import quote   # برای کدگذاری نام فایل workflow
 
-# آدرس فایل لاگ در مخزن دوم (مسیر logs/new_videos.txt)
+# آدرس فایل لاگ در مخزن دوم
 LOG_URL = "https://raw.githubusercontent.com/alipoorkaramali/youtube-news-watcher/main/logs/new_videos.txt"
 
 # فایل محلی برای ردگیری لینک‌های پردازش‌شده
 STATE_FILE = "processed.txt"
 
-# اطلاعات مخزن اول
+# اطلاعات مخزن اول برای فراخوانی workflow
 REPO_OWNER = "alipoorkaramali"
 REPO_NAME = "youtube-SoundCloud-downloader"
-WORKFLOW_FILE = "Multi-Platform Downloader.yml"   # نام دقیق فایل workflow
+WORKFLOW_FILE = "Multi-Platform Downloader.yml"
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 
 def get_processed():
@@ -28,17 +27,27 @@ def save_processed(hashes):
             f.write(h + "\n")
 
 def extract_url(line: str) -> str | None:
-    """استخراج لینک یوتیوب از خط لاگ (بخش آخر بعد از | )"""
-    parts = line.split(" | ")
-    if len(parts) >= 4:
+    """
+    خطوط به یکی از این دو فرمت هستند:
+    1. قدیمی (یوتیوب): timestamp | title | rel_time | url
+    2. جدید (ساندکلاد): timestamp | platform | title (ممکن است خود شامل | باشد) | rel_time | url
+    برای استخراج امن، از rsplit با محدودیت ۳ بار تقسیم از سمت راست استفاده می‌کنیم
+    تا url و rel_time جدا شوند و مابقی خط (که شامل title است) دست‌نخورده باقی بماند.
+    """
+    parts = line.rsplit(" | ", 3)  # حداکثر ۳ بار از سمت راست تقسیم می‌کند
+    if len(parts) == 4:
+        # آخرین بخش همیشه URL است
         url = parts[-1].strip()
-        if url.startswith("https://www.youtube.com/watch"):
+        # بخش سوم rel_time است
+        relative_time = parts[-2].strip()
+        # تمام بخش‌های قبلی (timestamp [| platform] | title) هستند
+        # چک می‌کنیم که URL معتبر باشد
+        if url.startswith("https://www.youtube.com/watch") or url.startswith("https://soundcloud.com/"):
             return url
     return None
 
 def trigger_download(video_url: str):
-    # نام فایل workflow را برای URL کدگذاری کن (فاصله تبدیل به %20)
-    workflow_id = quote(WORKFLOW_FILE, safe='')
+    workflow_id = requests.utils.quote(WORKFLOW_FILE, safe='')
     url = (
         f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
         f"/actions/workflows/{workflow_id}/dispatches"
@@ -47,14 +56,13 @@ def trigger_download(video_url: str):
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
-    # ورودی‌های مورد نیاز ورک‌فلوی دانلود
     payload = {
         "ref": "main",
         "inputs": {
-            "platform": "youtube",   # ثابت روی یوتیوب
-            "url": video_url,        # لینک استخراج‌شده
-            "format": "video",       # خروجی ویدئو (یا در صورت تمایل "audio")
-            "folder": "downloads"    # پوشهٔ مقصد
+            "platform": "youtube" if "youtube.com" in video_url else "soundcloud",
+            "url": video_url,
+            "format": "audio",
+            "folder": "downloads"
         }
     }
     resp = requests.post(url, headers=headers, json=payload)
@@ -64,7 +72,6 @@ def trigger_download(video_url: str):
         print(f"❌ خطا برای {video_url}: {resp.status_code} {resp.text}")
 
 def main():
-    # ۱. دریافت فایل لاگ از مخزن دوم
     resp = requests.get(LOG_URL)
     if resp.status_code != 200:
         print(f"⚠️ دریافت لاگ ناموفق: {resp.status_code}")
