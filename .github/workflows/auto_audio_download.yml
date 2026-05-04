@@ -1,0 +1,42 @@
+name: 🎵 Automatic Audio Download from RSS
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # هر ۱۵ دقیقه
+  workflow_dispatch:          # اجرای دستی هم ممکن باشد
+
+permissions:
+  contents: write
+
+jobs:
+  download-audio:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # برای سازگاری
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚙️ Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: pip install requests
+
+      - name: 🛠️ Setup yt-dlp
+        uses: AnimMouse/setup-yt-dlp@v3
+
+      - name: 🎧 Run auto audio downloader
+        run: python auto_audio_downloader.py
+
+      # فایل‌های صوتی جدید و processed_audio.txt را commit کن
+      - name: 📌 Commit downloaded audio & state
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'Add audio downloads from RSS'
+          file_pattern: 'audio_downloads/ processed_audio.txt'
