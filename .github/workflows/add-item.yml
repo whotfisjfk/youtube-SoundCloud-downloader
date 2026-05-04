@@ -1,4 +1,4 @@
-name: Add Watch Item
+name: اضافه کردن کانل و موضوع
 
 on:
   workflow_dispatch:
