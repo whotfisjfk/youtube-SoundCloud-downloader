@@ -4,13 +4,8 @@ import requests
 import hashlib
 from pathlib import Path
 
-# آدرس فایل لاگ در مخزن دوم
 LOG_URL = "https://raw.githubusercontent.com/alipoorkaramali/youtube-news-watcher/main/logs/new_videos.txt"
-
-# فایل محلی برای ردگیری لینک‌های پردازش‌شده
 STATE_FILE = "processed_audio.txt"
-
-# پوشه‌ای که فایل‌های صوتی در آن ذخیره می‌شوند
 DEST_FOLDER = "audio_downloads"
 
 def get_processed():
@@ -24,30 +19,54 @@ def save_processed(hashes):
         for h in hashes:
             f.write(h + "\n")
 
-def extract_url(line: str) -> str | None:
+def parse_line(line):
+    """
+    خط نمونه:
+    timestamp | youtube | title | rel_time | url
+    یا
+    timestamp | soundcloud | title | rel_time | url
+    برمی‌گرداند (platform, url)
+    """
     parts = line.split(" | ")
-    if len(parts) >= 4:
+    if len(parts) >= 5:
+        plat = parts[1].strip()
         url = parts[-1].strip()
-        if url.startswith("https://www.youtube.com/watch"):
-            return url
-    return None
+        if plat in ("youtube", "soundcloud") and url.startswith("https://"):
+            return plat, url
+    return None, None
 
-def download_audio(video_url: str):
-    """دانلود صوت از یوتیوب با yt-dlp (خروجی MP3)"""
+def download_audio(platform, url):
     Path(DEST_FOLDER).mkdir(parents=True, exist_ok=True)
-    # استفاده از همان دستور موجود در ورک‌فلوی اصلی برای صوت یوتیوب
-    cmd = [
-        "yt-dlp",
-        "-f", "bestaudio[ext=m4a]/bestaudio/best",
-        "--audio-format", "mp3",
-        "--audio-quality", "0",
-        "--cookies", "cookies.txt",
-        "--force-overwrites",
-        "--no-playlist",
-        video_url,
-        "-o", f"{DEST_FOLDER}/%(title)s.%(ext)s"
-    ]
-    print(f"⬇️ در حال دانلود صوت: {video_url}")
+
+    if platform == "youtube":
+        cmd = [
+            "yt-dlp",
+            "-f", "bestaudio[ext=m4a]/bestaudio/best",
+            "--audio-format", "mp3",
+            "--audio-quality", "0",
+            "--cookies", "cookies.txt",
+            "--force-overwrites",
+            "--no-playlist",
+            url,
+            "-o", f"{DEST_FOLDER}/%(title)s.%(ext)s"
+        ]
+    elif platform == "soundcloud":
+        # بر اساس ورک‌فلوی Multi-Platform Downloader برای صوت ساندکلاد
+        cmd = [
+            "yt-dlp",
+            "-x",
+            "--audio-format", "mp3",
+            "--audio-quality", "0",
+            "--no-playlist",
+            "--force-ipv4",
+            url,
+            "-o", f"{DEST_FOLDER}/%(title)s.%(ext)s"
+        ]
+    else:
+        print(f"❌ پلتفرم ناشناخته: {platform}")
+        return
+
+    print(f"⬇️ دانلود صوت {platform}: {url}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         print("✅ دانلود موفق")
@@ -55,7 +74,6 @@ def download_audio(video_url: str):
         print(f"❌ خطا در دانلود:\n{result.stderr}")
 
 def main():
-    # ۱. دریافت فایل لاگ
     resp = requests.get(LOG_URL)
     if resp.status_code != 200:
         print(f"⚠️ دریافت لاگ ناموفق: {resp.status_code}")
@@ -66,13 +84,14 @@ def main():
     new_hashes = []
 
     for line in lines:
-        url = extract_url(line)
+        plat, url = parse_line(line)
         if not url:
+            print(f"⚠️ نتوانستم پلتفرم/لینک را از خط زیر استخراج کنم:\n{line}")
             continue
         h = hashlib.md5(url.encode()).hexdigest()
         if h in processed:
             continue
-        download_audio(url)
+        download_audio(plat, url)
         processed.add(h)
         new_hashes.append(h)
 
