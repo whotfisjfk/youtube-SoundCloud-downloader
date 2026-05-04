@@ -1,4 +1,4 @@
-name: YouTube Multi-Watcher
+name:  دریافت آخرین ویدیوهای کانال (یوتیوب/ساندکلاد)
 
 on:
   schedule:
