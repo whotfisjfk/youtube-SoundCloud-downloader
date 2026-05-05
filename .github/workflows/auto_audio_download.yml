@@ -1,9 +1,8 @@
 name: 🎵 Automatic Audio Download from RSS
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'   # هر ۱۵ دقیقه
-  workflow_dispatch:          # اجرای دستی هم ممکن باشد
+  # schedule حذف یا کامنت شود
+  workflow_dispatch:   # فقط از طریق فراخوانی دستی یا via gh workflow run
 
 permissions:
   contents: write
@@ -12,7 +11,7 @@ jobs:
   download-audio:
     runs-on: ubuntu-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # برای سازگاری
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: 📥 Checkout repository
@@ -34,7 +33,6 @@ jobs:
       - name: 🎧 Run auto audio downloader
         run: python auto_audio_downloader.py
 
-      # فایل‌های صوتی جدید و processed_audio.txt را commit کن
       - name: 📌 Commit downloaded audio & state
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
