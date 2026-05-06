@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0            # دریافت کل تاریخچه برای git log در اسکریپت پاک‌سازی
 
       - name: ⚙️ Setup Python
         uses: actions/setup-python@v5
@@ -32,7 +33,6 @@ jobs:
       - name: 🎧 Run auto audio downloader
         run: python auto_audio_downloader.py
 
-      # >>> قدم جدید برای پاک‌سازی فایل‌های قدیمی
       - name: 🧹 Cleanup old audio files
         run: python cleanup_old_audio.py
 
@@ -40,4 +40,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'Add audio downloads from RSS'
-          file_pattern: 'audio_downloads/ processed_audio.txt'
+          # حذف file_pattern برای ثبت حذف‌ها نیز
