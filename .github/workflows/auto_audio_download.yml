@@ -1,8 +1,7 @@
 name: 🎵 Automatic Audio Download from RSS
 
 on:
-  # schedule حذف یا کامنت شود
-  workflow_dispatch:   # فقط از طریق فراخوانی دستی یا via gh workflow run
+  workflow_dispatch:   # فقط دستی یا از طریق gh workflow run
 
 permissions:
   contents: write
@@ -32,6 +31,10 @@ jobs:
 
       - name: 🎧 Run auto audio downloader
         run: python auto_audio_downloader.py
+
+      # >>> قدم جدید برای پاک‌سازی فایل‌های قدیمی
+      - name: 🧹 Cleanup old audio files
+        run: python cleanup_old_audio.py
 
       - name: 📌 Commit downloaded audio & state
         uses: stefanzweifel/git-auto-commit-action@v5
