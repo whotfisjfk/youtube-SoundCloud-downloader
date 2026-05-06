@@ -3,13 +3,9 @@ import requests
 import hashlib
 from pathlib import Path
 
-# آدرس فایل لاگ در مخزن دوم
 LOG_URL = "https://raw.githubusercontent.com/alipoorkaramali/youtube-news-watcher/main/logs/new_videos.txt"
-
-# فایل محلی برای ردگیری لینک‌های پردازش‌شده
 STATE_FILE = "processed.txt"
 
-# اطلاعات مخزن اول برای فراخوانی workflow
 REPO_OWNER = "alipoorkaramali"
 REPO_NAME = "youtube-SoundCloud-downloader"
 WORKFLOW_FILE = "Multi-Platform Downloader.yml"
@@ -28,22 +24,25 @@ def save_processed(hashes):
 
 def extract_url(line: str) -> str | None:
     """
-    خطوط به یکی از این دو فرمت هستند:
-    1. قدیمی (یوتیوب): timestamp | title | rel_time | url
-    2. جدید (ساندکلاد): timestamp | platform | title (ممکن است خود شامل | باشد) | rel_time | url
-    برای استخراج امن، از rsplit با محدودیت ۳ بار تقسیم از سمت راست استفاده می‌کنیم
-    تا url و rel_time جدا شوند و مابقی خط (که شامل title است) دست‌نخورده باقی بماند.
+    قالب جدید خط:
+    timestamp | platform | title (می‌تواند شامل | باشد) | relative_time | url | pub_date_iran
+    با rsplit(" | ", 2) سه بخش از راست جدا می‌شود:
+    بخش‌های قبل از relative_time، relative_time، url|date
+    اما در واقع rsplit با maxsplit=2 از راست دو بار تقسیم می‌کند:
+    جداکننده بین url و date → ['بقیه خط تا قبل از date', 'date']
+    سپس جداکننده بین relative_time و url → ['بقیه خط تا قبل از relative_time', 'url', 'date']
+    بنابراین خروجی: ['بقیه خط', 'relative_time', 'url', 'date'] نیست بلکه سه عضوی است: ['بقیه خط', 'url', 'date']؟
+    آزمایش ذهنی: "A | B | C | D | E | F" rsplit(" | ", 2)
+    مرحله اول: جدا از راست → بین E و F => ["A | B | C | D | E", "F"]
+    مرحله دوم: جدا از راست روی رشته اول → بین D و E => ["A | B | C | D", "E", "F"]
+    پس خروجی نهایی: ["A | B | C | D", "E", "F"]  که E=url, F=date
+    پس url در اندیس ۱ است.
     """
-    parts = line.rsplit(" | ", 3)  # حداکثر ۳ بار از سمت راست تقسیم می‌کند
-    if len(parts) == 4:
-        # آخرین بخش همیشه URL است
-        url = parts[-1].strip()
-        # بخش سوم rel_time است
-        relative_time = parts[-2].strip()
-        # تمام بخش‌های قبلی (timestamp [| platform] | title) هستند
-        # چک می‌کنیم که URL معتبر باشد
-        if url.startswith("https://www.youtube.com/watch") or url.startswith("https://soundcloud.com/"):
-            return url
+    parts = line.rsplit(" | ", 2)
+    if len(parts) == 3:
+        url_candidate = parts[1].strip()
+        if url_candidate.startswith("https://www.youtube.com/watch") or url_candidate.startswith("https://soundcloud.com/"):
+            return url_candidate
     return None
 
 def trigger_download(video_url: str):
@@ -56,10 +55,11 @@ def trigger_download(video_url: str):
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
+    platform = "youtube" if "youtube.com" in video_url else "soundcloud"
     payload = {
         "ref": "main",
         "inputs": {
-            "platform": "youtube" if "youtube.com" in video_url else "soundcloud",
+            "platform": platform,
             "url": video_url,
             "format": "audio",
             "folder": "downloads"
