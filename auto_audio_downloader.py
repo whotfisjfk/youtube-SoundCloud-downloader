@@ -3,10 +3,21 @@ import subprocess
 import requests
 import hashlib
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 LOG_URL = "https://raw.githubusercontent.com/alipoorkaramali/youtube-news-watcher/main/logs/new_videos.txt"
 STATE_FILE = "processed_audio.txt"
 DEST_FOLDER = "audio_downloads"
+
+def iran_offset():
+    now = datetime.now()
+    return timedelta(hours=4, minutes=30) if 3 <= now.month <= 9 else timedelta(hours=3, minutes=30)
+
+def iran_tz():
+    return timezone(iran_offset())
+
+def iran_now():
+    return datetime.now(timezone.utc) + iran_offset()
 
 def get_processed():
     if not Path(STATE_FILE).exists():
@@ -21,15 +32,19 @@ def save_processed(hashes):
 
 def extract_info(line):
     """
-    با استفاده از rsplit از سمت راست، url و پلتفرم را به صورت امن استخراج می‌کند.
+    قالب خط: timestamp | platform | title | relative_time | url | pub_date_iran
+    pub_date_iran به فرمت YYYY-MM-DD
+    خروجی: (platform, url, pub_date_str) یا (None, None, None) در صورت خطا
     """
-    parts = line.rsplit(" | ", 3)
-    if len(parts) < 4:
-        return None, None
-    url = parts[-1].strip()
-    # پلتفرم را از بخش‌های ابتدایی حدس می‌زنیم
-    platform = "youtube" if "youtube.com" in url else "soundcloud"
-    return platform, url
+    parts = line.rsplit(" | ", 2)
+    if len(parts) != 3:
+        return None, None, None
+    url_candidate = parts[1].strip()
+    if not (url_candidate.startswith("https://www.youtube.com/watch") or url_candidate.startswith("https://soundcloud.com/")):
+        return None, None, None
+    pub_date = parts[2].strip()
+    plat = "youtube" if "youtube.com" in url_candidate else "soundcloud"
+    return plat, url_candidate, pub_date
 
 def download_audio(platform, url):
     Path(DEST_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -74,23 +89,32 @@ def main():
     processed = get_processed()
     new_hashes = []
 
+    today_iran_str = iran_now().strftime("%Y-%m-%d")
+
     for line in lines:
-        plat, url = extract_info(line)
-        if not url:
-            print(f"⚠️ نتوانستم لینکی از خط زیر استخراج کنم:\n{line}")
+        plat, url, pub_date = extract_info(line)
+        if not url or not pub_date:
+            print(f"⚠️ نتوانستم اطلاعات لازم را از خط زیر استخراج کنم:\n{line}")
             continue
+
+        # فقط فایل‌های مربوط به امروز ایران
+        if pub_date != today_iran_str:
+            print(f"⏩ رد شد (تاریخ {pub_date} ≠ امروز {today_iran_str}): {url}")
+            continue
+
         h = hashlib.md5(url.encode()).hexdigest()
         if h in processed:
             continue
+
         download_audio(plat, url)
         processed.add(h)
         new_hashes.append(h)
 
     if new_hashes:
         save_processed(processed)
-        print(f"🎉 {len(new_hashes)} فایل صوتی جدید دانلود شد.")
+        print(f"🎉 {len(new_hashes)} فایل صوتی جدید (مربوط به امروز) دانلود شد.")
     else:
-        print("🔄 فایل جدیدی برای دانلود وجود ندارد.")
+        print("🔄 فایل جدیدی برای امروز وجود ندارد.")
 
 if __name__ == "__main__":
     main()
