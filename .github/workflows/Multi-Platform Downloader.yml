@@ -36,6 +36,13 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      # ================= ایست کامل در صورت اجرای غیردستی =================
+      - name: 🛑 توقف اگر ورک‌فلو دستی اجرا نشده باشد
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          echo "❌ این ورک‌فلو فقط به‌صورت دستی (workflow_dispatch) اجرا می‌شود."
+          exit 1
+
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
