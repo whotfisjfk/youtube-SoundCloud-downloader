@@ -36,14 +36,6 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      # ================= مسدود کردن اجرای ربات =================
-      - name: 🛑 جلوگیری از اجرای خودکار (فقط انسان واقعی)
-        if: github.actor == 'github-actions[bot]'
-        run: |
-          echo "⛔ این ورک‌فلو فقط توسط یک کاربر حقیقی و از طریق تب Actions اجرا می‌شود."
-          echo "اجرای خودکار از طرف ربات یا اسکریپت مجاز نیست."
-          exit 1
-
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
