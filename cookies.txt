@@ -208,8 +208,6 @@ csp.ihio.gov.ir	FALSE	/	TRUE	1778498142	VisitorStatus	21064659126
 .consensus.app	TRUE	/	FALSE	1800682374	mp_4e2b457116c1371e7dfa7cc0056346de_mixpanel	%7B%22distinct_id%22%3A%22user_2xMu123R5QMQuGC0L8rpBXo6x0s%22%2C%22%24device_id%22%3A%22196185084901190-0a20dbd6bfa564-26001f51-1fa400-196185084901190%22%2C%22%24initial_referrer%22%3A%22https%3A%2F%2Fconsensus.app%2F%22%2C%22%24initial_referring_domain%22%3A%22consensus.app%22%2C%22%24user_id%22%3A%22user_2xMu123R5QMQuGC0L8rpBXo6x0s%22%2C%22__mps%22%3A%7B%7D%2C%22__mpso%22%3A%7B%7D%2C%22__mpus%22%3A%7B%7D%2C%22__mpa%22%3A%7B%7D%2C%22__mpu%22%3A%7B%7D%2C%22__mpr%22%3A%5B%5D%2C%22__mpap%22%3A%5B%5D%7D
 .consensus.app	TRUE	/	FALSE	1803707679	_ga_F64869RGLH	GS2.1.s1769146372$o14$g1$t1769147679$j60$l0$h2097999434
 .consensus.app	TRUE	/	TRUE	1800682373	cf_clearance	iRtl6krLrb5L9D38IkTVnvpMcavRJWeKOGom6CYL5rA-1769146513-1.2.1.1-wAqJGit5Orki5YQuG.Wam0fG7O5eymfvqu4C.qYarjEzwcfWlMe8DZPPOm7sijYT8ww5.4KfybB3yvBaBKcd4y.RDEn_v5tduItMC7NJ8DHDKhy4.3g_L0JtEBPS.MREUQ01h2NCD750M8FG4rvsClbiwg0b_x8IWjrHegrbO5S1nDty4duvnr_ES3TLDTWNh3iuESkWu6kVqIn3v8RNZoSCRdV_uQys.KcTcd7npX1TJldUcYkUhLKPCHMpecUz
-www.mdpi.com	FALSE	/	FALSE	1778153973	_pk_id.1.ecbd	82f52b441173d505.1744198773.
-.www.mdpi.com	TRUE	/	FALSE	1778153978	_pk_id.1.0af8	98db6238297997b2.1744198778.
 .springer.com	TRUE	/	FALSE	1778758874	idp_marker	e932062a-688a-4282-8ca3-eef628c20f19
 .springer.com	TRUE	/	TRUE	1778759790	permutive-id	5e23f7ba-567a-4a3d-9891-bef9c52399c3
 .springer.com	TRUE	/	FALSE	1778759790	_ga	GA1.1.478432046.1744199097
@@ -626,9 +624,9 @@ imgur.com	FALSE	/	FALSE	1785151466	m_sort	time
 .youtube.com	TRUE	/	TRUE	1793689709	LOGIN_INFO	AFmmF2swRQIgDjijKxsFbnwxBGvjO-aAXdSHPxe5ODy7as_NkExcaYcCIQDMApSnJ2sXGJwL7yxaP4lqdrItSS4qX2-9NLJyloKaLw:QUQ3MjNmektOeDlLZjI1aFNxZ3JOc2ZNMDhWRFE3STRJNzktMldfcmVYalRIYWk5VkNXYjFpMkg2TkRWM0x6STZiTHllZzNsME5hQURJWXo2QUZ0NGZCNVhKVVltR3VnOXZuSjZ1YmR2dDNZbl9Demp3bHR4Z0QzRmhyWlVQUUo5UUI0cXNoRzItOVAtVVRFQ19mTmU4VkVqY2dDRHAtUVJ3
 .youtube.com	TRUE	/	TRUE	1801498582	__Secure-1PSIDTS	sidts-CjQB7I_69C-BA-U_R4M_uaxakqzQyvzI8t2Rq_xIX23A3Mca7CyUEG9bTh0WfvsLLcGGR9w3EAA
 .youtube.com	TRUE	/	TRUE	1801498582	__Secure-3PSIDTS	sidts-CjQB7I_69C-BA-U_R4M_uaxakqzQyvzI8t2Rq_xIX23A3Mca7CyUEG9bTh0WfvsLLcGGR9w3EAA
-.youtube.com	TRUE	/	FALSE	1809681333	SIDCC	AKEyXzWEkTBu7QddntbwP_oOAboy_vSjxkIB3WSxEC-T6tmXy5qKbmqzbkdtZ8Wo5Xg1ka2F
-.youtube.com	TRUE	/	TRUE	1809681333	__Secure-1PSIDCC	AKEyXzVd1S9Tmk8DOwIeSVZwDSJ-c60wbfW_u-Q9vWust00P4f7In6LmJUUonrsQYaWz5_hQ
-.youtube.com	TRUE	/	TRUE	1809681333	__Secure-3PSIDCC	AKEyXzXy1tzv69Z9xrpS3l-3Mfvhe4JbIXpopRJBSudjOp0xnLTQRHPExoyhizD6qQeNQerQMh4
+.youtube.com	TRUE	/	FALSE	1809707650	SIDCC	AKEyXzV5RdGCRgUYQ-QfA9W-Bnk8wNs9-SSa903nEV7tJx4tIEc-4zoSCtAg5HLfnMb8vUA5
+.youtube.com	TRUE	/	TRUE	1809707650	__Secure-1PSIDCC	AKEyXzU3X_mqHPQsDqiYuWSAxq2pGRe8B41lJWIRhGIiqfwAvzk9-IHP3sEN4qO2-Nfbg0Ii
+.youtube.com	TRUE	/	TRUE	1809707650	__Secure-3PSIDCC	AKEyXzWul8hS-dti9Kt4mbSZhgmjNKJy8vdCNuj2kw0G62Q7X2f8lBaeMeLoYL3moJ5pzyuprUA
 .youtube.com	TRUE	/	FALSE	1810988828	SID	g.a0009Agj81JUNQhJftnQNpTrZz8FIGwOqdCNZy3myWD9f8cKSNwQbr7dA4cOd8ohgDgo0N7LZAACgYKAf0SARcSFQHGX2MiAFw1IEanfBZ3QGdrFKcfRhoVAUF8yKqSxrY0NEiTBiXpO8rtFU1c0076
 .youtube.com	TRUE	/	TRUE	1810988828	__Secure-1PSID	g.a0009Agj81JUNQhJftnQNpTrZz8FIGwOqdCNZy3myWD9f8cKSNwQ6g2hv-8NPR8SGcW4OCvsDQACgYKAW8SARcSFQHGX2MitLC6ZptSKOaU_qNRumuZSxoVAUF8yKqS1yGSPCYwvQc2V8pLW9pE0076
 .youtube.com	TRUE	/	TRUE	1810988828	__Secure-3PSID	g.a0009Agj81JUNQhJftnQNpTrZz8FIGwOqdCNZy3myWD9f8cKSNwQUU40Oxpq3n7xU_1y-0nzAQACgYKAaESARcSFQHGX2Mi5vjFqpZjjJpmtWPDnHZcQxoVAUF8yKqhCI9cSR19BSMfj2QEqV4b0076
@@ -638,10 +636,10 @@ imgur.com	FALSE	/	FALSE	1785151466	m_sort	time
 .youtube.com	TRUE	/	TRUE	1810988828	SAPISID	6fgC3CrMvRV84aSS/APqFutW0B_ExADhLG
 .youtube.com	TRUE	/	TRUE	1810988828	__Secure-1PAPISID	6fgC3CrMvRV84aSS/APqFutW0B_ExADhLG
 .youtube.com	TRUE	/	TRUE	1810988828	__Secure-3PAPISID	6fgC3CrMvRV84aSS/APqFutW0B_ExADhLG
-.youtube.com	TRUE	/	TRUE	1793697333	VISITOR_INFO1_LIVE	32HU5-kbBq0
-.youtube.com	TRUE	/	TRUE	1793697333	VISITOR_PRIVACY_METADATA	CgJJUxIiEh4SHAsMDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicgLw%3D%3D
-.youtube.com	TRUE	/	TRUE	1793628134	__Secure-ROLLOUT_TOKEN	CJKAipua_qH-cBCH5uCIyN2OAxiP2JXj6aSUAw%3D%3D
-.youtube.com	TRUE	/	TRUE	1793697333	__Secure-YNID	18.YT=iOGwDmY7SPbC6rEN6ZTuDpWVwRV5Cg0NWEJBwCvIMCoOq52rGQFB41rh5NYGovZDn1ELIhSFrJvjinOWIhIMoJXK3tGmzXwXeEeiMzHF4VBE3utZ94ENq1Ke_v1DNXllAsVhJ_XLyZpbmnQJS23KVecsE9qoZKxSZkpwUvZdZ_0JYmPNNDb3cHubVb8kwtST78gC8PaEc56fxPwSoo4ey06zTV7Dy325eSHYZUvvibnZ6xQ5UhM1hMx3dTh7ZKKF8zKpeenMwnhXdwCwZ2xiIjo5H287MJ0M3wAb1UBDW8HSRRfwn0Upjy0PvWZkNwUpvxEPiQL9K_5xPal1-PE_tA
+.youtube.com	TRUE	/	TRUE	1793723650	VISITOR_INFO1_LIVE	32HU5-kbBq0
+.youtube.com	TRUE	/	TRUE	1793723650	VISITOR_PRIVACY_METADATA	CgJJUxIiEh4SHAsMDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicgLw%3D%3D
+.youtube.com	TRUE	/	TRUE	1793723635	__Secure-ROLLOUT_TOKEN	CJKAipua_qH-cBCH5uCIyN2OAxi7vcPFzaeUAw%3D%3D
+.youtube.com	TRUE	/	TRUE	1793697333	__Secure-YNID	18.YT=G1RNu4JQ5KTfWsOwyav_deg-fv9QZXxwYoPbhO1f-LSvI6nXZIvqUh4npph8lOEe0vKRldV7qkaVY-tYe2q6BK4CySRQUY-xAVw5IBNuEdZKud9qKyqLP_jBXmyy8LaKXSUcP_a_ljYCpdrQDLHPWzD4N2NL8-AWGrJHVkLP4loH0buKiq8rdy5tDrHkK6a9L1yULjg0PtY6N6EJiA7L5Ha6gd0UrddVk3j2iZQx1k9D4fXYp3Bq2VhttDj3wU30fVVbDZCgKOQIrtIBmt2ETDmY4CaNFKPo0EuQUY9syrYD5ZC3ryCZ2ZlcCbXtvh2WTL_5icVyhmF6hjRKPI_g9A
 .youtube.com	TRUE	/	TRUE	0	YSC	336RtXftdY8
 par30games.net	FALSE	/	FALSE	1785650021	analytics_token	40d4129d-d17a-d540-7ca5-804439ff7524
 .par30games.net	TRUE	/	FALSE	1788674024	_ga	GA1.1.1176816169.1754110503
@@ -1307,16 +1305,10 @@ www.uptvs.com	FALSE	/	FALSE	1790271799	_pk_ref.1.cf8d	%5B%22%22%2C%22%22%2C17745
 dolatshah.com	FALSE	/	FALSE	1791313656	_pk_ref.1.58f3	%5B%22%22%2C%22%22%2C1775545656%2C%22https%3A%2F%2Fzarebin.ir%2F%22%5D
 dolatshah.com	FALSE	/	FALSE	1809500856	_pk_id.1.58f3	3e33bc598bc3d617.1775545656.
 p30download.ir	FALSE	/	FALSE	1807096919	analytics_token	a1c88b62-61bf-4fe0-ac5a-aafbc826fa3a
-p30download.ir	FALSE	/	FALSE	1778151571	_yngt	9ff487fe-e8b3c-cac5f-f9e30-0ee469703cc3b
 .plus.sabavision.com	TRUE	/	TRUE	1780561357	sid	ad7b20d2-3275-11f1-b752-00505697a10e
-.sabavision.com	TRUE	/	TRUE	1778153357	sid	ad7b20d2-3275-11f1-b752-00505697a10e
 liara.ir	FALSE	/	FALSE	1807097707	analytics_token	b3d93705-0acd-d8d2-77c0-8b8774f84161
-liara.ir	FALSE	/	FALSE	1778153537	_yngt	9ff487fe-e8b3c-cac5f-f9e30-0ee469703cc3b
 .roocket.ir	TRUE	/	FALSE	1810122111	theme	system
-.roocket.ir	TRUE	/	TRUE	1778154205	XSRF-TOKEN	eyJpdiI6IktUMk40M2xUbkUxR0czMytGaUtyY0E9PSIsInZhbHVlIjoibVhUWUI2Q1l3RnF1QjduVlFsNUdzem9jSEt2UzVtT2lFUlpCbGhpTnArUHdNVStVclNMTkJsQ2JoODZaWHI5TkJXL0dIZUlWb2J6dldnVzJLeDd6d0haVFNNRC9JeDB3NVphSkJINjhvb0RDZUs4RGgwT3ZuTEpvb2RxUmdibkwiLCJtYWMiOiIwZjMyZDBlNTg3YjE5YmI0NGM2MmUyZWVmYTQ4MmZjNmY3MTU3MzdmNjlkODk3NzkzYmE0ZmM1ZmNhYjFiNDg0IiwidGFnIjoiIn0%3D
-.roocket.ir	TRUE	/	TRUE	1778154205	roocketir_session	eyJpdiI6IlFYaFV3VU9abTdUa25uaCtQZHBWWUE9PSIsInZhbHVlIjoic0dzWERJa1JHNUVaaWx1aVFoV3BaRHJ5VnZZb005c0tISUM3a09sZDhYdmd5bGE0a1J3YzJtTTNwQXM3MUQ5dURMbTFJVTMrbXRMcndVSEFkU0hSeGkyOFV2Y05EWm1RdFJMVzlLMWU1OWpwVG1WdkltZ2xXaXBwcDJwL254STAiLCJtYWMiOiJhZDAyNmE4ZjYxZTUyZDkyNDI1NzY1MThjYWJjZDQ4ZTFmN2Q1ZmY1MGY5YmViOTM2Y2ZhZGI4ZjBlZDE1MGY1IiwidGFnIjoiIn0%3D
 roocket.ir	FALSE	/	FALSE	1807098205	analytics_token	1333e85a-306b-ac64-104a-274b58a778e9
-roocket.ir	FALSE	/	FALSE	1778154115	_yngt	9ff487fe-e8b3c-cac5f-f9e30-0ee469703cc3b
 virgool.io	FALSE	/	TRUE	1810122234	rec	eyJpdiI6IjBRRTRtRjUxM1QrUHhqUnlDWHorTnc9PSIsInZhbHVlIjoiTXpHZGVScEpxOUExcWZpM1YzVzN1Z3dSaUxtNVRNR2ljcTZzYXlmZm1hVXpYS3pZT3B2TWJxS3VTT2l5dFlZTXA5T1JkK1kxUE8ya1VsZVhQRGZ0T1E9PSIsIm1hYyI6ImMzZjQwYmIwNTc3ZDNkZTFlZDM2ZDU0ZDljMTExY2M3NDgwOTFkNDM2MmZmZjEyN2ZiZjU5MWViMjYwNGU4NmUiLCJ0YWciOiIifQ%3D%3D
 soft98.ir	FALSE	/	FALSE	1807717591	search_autocomplete	{"post_histories":[{"title":"Net Framework","url":"https://soft98.ir/software/209-Microsoft-NET-Framework.html","image":"https://cdn.soft98.ir/Microsoft%20.NET%20Framework.jpg","os":["windows"],"count":1},{"title":"Visual C","url":"https://soft98.ir/software/programming/3134-microsoft-visual-c-redistributable.html","image":"https://cdn.soft98.ir/Microsoft%20Visual%20C++.jpg","os":["windows"],"count":1},{"title":"Revo Uninstaller","url":"https://soft98.ir/software/uninstall/439-revo-uninstaller-pro.html","image":"https://cdn.soft98.ir/Revo%20Uninstaller.jpg","os":["windows"],"count":1},{"title":"مرورگر گوگل کروم Google Chrome","url":"https://soft98.ir/internet/web-browser/244-google-chrome.html","image":"https://cdn.soft98.ir/Google%20Chrome.png","os":["windows","mac","linux"],"count":1},{"title":"مرورگر موزیلا فایرفاکس Mozilla Firefox","url":"https://soft98.ir/internet/web-browser/3176-mozilla-firefox.html","image":"https://cdn.soft98.ir/firefox.jpg","os":["windows","mac","linux"],"count":1},{"title":"WinRAR","url":"https://soft98.ir/software/compress/21-winrar.html","image":"https://cdn.soft98.ir/winrar.jpg","os":["windows"],"count":1},{"title":"Download Manager","url":"https://soft98.ir/tags/download+manager/","image":"https://cdn.soft98.ir/IDM.jpg","os":["windows"],"count":1}],"search_histories":[]}
 lens.google.com	FALSE	/	TRUE	1810988828	OSID	g.a0009Agj84MtARo77pIBgXAnZl1SmFnsPio1pLCpAONA3BzascLjCRirPyok14W9iV2kRURwDgACgYKASwSARcSFQHGX2Mi2wOyFIQ66xE65jFf3pxWJxoVAUF8yKrmLbBpiuJD5JxdIBNcXGQ_0076
