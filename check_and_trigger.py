@@ -3,21 +3,20 @@ import requests
 import hashlib
 from pathlib import Path
 
-# آدرس فایل لاگ در مخزن دوم
+# آدرس فایل لاگ در مخزن اسکنر
 LOG_URL = "https://raw.githubusercontent.com/alipoorkaramali/youtube-news-watcher/main/logs/new_videos.txt"
 
-# فایل محلی برای ردگیری لینک‌های پردازش‌شده
-STATE_FILE = "processed.txt"
-# فایل محلی برای ردگیری عناوین دانلودشده (جلوگیری از تکراری بین پلتفرم‌ها)
-TITLE_STATE_FILE = "processed_titles.txt"
+# فایل‌های وضعیت
+STATE_FILE = "processed.txt"               # هش لینک‌های پردازش‌شده
+TITLE_STATE_FILE = "processed_titles.txt"  # عناوین دانلودشده (جلوگیری از تکراری)
 
-# اطلاعات مخزن اول برای فراخوانی workflow
+# اطلاعات مخزن دانلودر
 REPO_OWNER = "alipoorkaramali"
 REPO_NAME = "youtube-SoundCloud-downloader"
 WORKFLOW_FILE = "Multi-Platform Downloader-auto.yml"
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 
-# 📁 پوشهٔ ذخیره‌سازی برای دانلودهای خودکار (جدا از دانلودهای دستی)
+# پوشهٔ مقصد برای دانلودهای خودکار (جدا از دانلودهای دستی)
 AUTO_FOLDER = "audio_downloads"
 
 
@@ -48,7 +47,7 @@ def add_processed_title(title):
 
 def extract_info(line: str):
     """
-    خطوط لاگ جدید:
+    ساختار خط لاگ:
     timestamp | platform | عنوان (ممکن است شامل | باشد) | relative_time | url
     خروجی: (platform, title, url) یا None
     """
@@ -57,7 +56,7 @@ def extract_info(line: str):
         return None
 
     platform = parts[1].strip()
-    # اگر platform غیر از youtube/soundcloud بود، بر اساس URL حدس بزن
+    # اگر platform غیر از youtube/soundcloud بود، از URL حدس بزن
     if platform not in ("youtube", "soundcloud"):
         url = parts[-1].strip()
         if "youtube.com" in url:
@@ -68,7 +67,7 @@ def extract_info(line: str):
             return None
 
     url = parts[-1].strip()
-    # عنوان = همهٔ بخش‌ها از ایندکس ۲ تا یکی‌مانده‌به‌آخر
+    # عنوان = بخش‌های میانی تا یکی‌مانده‌به‌آخر (همان relative_time حذف می‌شود)
     title_parts = parts[2:-1]
     title = " | ".join(title_parts).strip() if title_parts else None
 
@@ -91,7 +90,7 @@ def trigger_download(video_url: str):
             "platform": "youtube" if "youtube.com" in video_url else "soundcloud",
             "url": video_url,
             "format": "audio",
-            "folder": AUTO_FOLDER          # <-- ذخیره در audio_downloads
+            "folder": AUTO_FOLDER          # 👈 دانلودهای خودکار در audio_downloads
         }
     }
     resp = requests.post(url, headers=headers, json=payload)
@@ -123,16 +122,15 @@ def main():
 
         platform, title, video_url = info
 
-        # 1. بررسی تکراری بودن URL
+        # ۱. بررسی تکراری بودن لینک (با MD5)
         link_hash = hashlib.md5(video_url.encode()).hexdigest()
         if link_hash in processed_hashes:
             continue
 
-        # 2. بررسی تکراری بودن عنوان (جلوگیری از دانلود تکراری بین پلتفرم‌ها)
+        # ۲. بررسی تکراری بودن عنوان (جلوگیری از دانلود یک خبر از دو پلتفرم مختلف)
         if title and title in processed_titles:
             print(f"⏭️ عنوان تکراری از منبع دیگر («{title}») - دانلود نمی‌شود.")
-            # لینک را هم به عنوان پردازش‌شده علامت بزنیم
-            processed_hashes.add(link_hash)
+            processed_hashes.add(link_hash)   # لینک را هم علامت بزنیم که دوباره بررسی نشود
             continue
 
         print(f"🎧 پردازش {video_url} (platform={platform}, title={title})")
@@ -142,11 +140,11 @@ def main():
             processed_hashes.add(link_hash)
             if title:
                 processed_titles.add(title)
-                add_processed_title(title)   # بلافاصله در فایل ذخیره شود
+                add_processed_title(title)   # بلافاصله در فایل processed_titles.txt ذخیره می‌شود
             new_count += 1
-        # در صورت شکست، لینک را ذخیره نمی‌کنیم (برای تلاش مجدد در اجرای بعدی)
+        # اگر dispatch ناموفق بود، لینک را ذخیره نمی‌کنیم تا دفعهٔ بعد دوباره تلاش شود
 
-    # ذخیره وضعیت نهایی هش‌ها
+    # ذخیرهٔ وضعیت نهایی هش‌ها (processed.txt)
     save_processed_hashes(processed_hashes)
 
     if new_count:
