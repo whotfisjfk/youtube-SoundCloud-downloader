@@ -1,31 +1,7 @@
 name: 🎬🎵⚙️ NEW2-auto-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
 
 on:
-  workflow_dispatch:
-    inputs:
-      platform:
-        description: '🌐 پلتفرم'
-        required: true
-        default: 'youtube'
-        type: choice
-        options:
-          - 'youtube'
-          - 'soundcloud'
-      url:
-        description: '🔗 لینک ویدئو / آهنگ'
-        required: true
-      format:
-        description: '🎬 خروجی'
-        required: true
-        default: 'video'
-        type: choice
-        options:
-          - 'video'
-          - 'audio'
-      folder:
-        description: '📁 پوشهٔ ذخیره'
-        required: false
-        default: 'downloads'
+  workflow_dispatch:       # فقط از طریق API یا gh workflow run
 
 jobs:
   download:
@@ -38,6 +14,9 @@ jobs:
     steps:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
+
+      - name: 🍪 ایجاد فایل کوکی از Secret
+        run: echo "${{ secrets.COOKIES_TXT }}" > cookies.txt
 
       - name: 🔧 نصب ffmpeg
         run: |
