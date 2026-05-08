@@ -50,7 +50,9 @@ jobs:
           ejs-node: true
           aria2: true
 
-      - name: 🧹 پاکسازی پوشهٔ دانلود
+      # پاک‌سازی فقط برای دانلودهای دستی (پیش‌فرض download) و نه پوشه audio_downloads
+      - name: 🧹 پاکسازی پوشهٔ دانلود (فقط برای دانلودهای دستی)
+        if: github.event.inputs.folder != 'audio_downloads'
         run: rm -rf "${{ github.event.inputs.folder }}"/*
 
       # ================= YouTube =================
@@ -131,6 +133,10 @@ jobs:
             fi
           done
 
+      # ================= ثبت زمان آپلود برای فایل‌های جدید =================
+      - name: 🕒 ثبت زمان آپلود فایل‌های جدید
+        run: python record_upload_time.py "${{ github.event.inputs.folder }}"
+
       # ================= ذخیره در مخزن =================
       - name: 🚀 ثبت فایل‌ها در مخزن
         run: |
@@ -139,7 +145,7 @@ jobs:
           git stash push --include-untracked
           git pull --rebase origin main
           git stash pop || true
-          git add "${{ github.event.inputs.folder }}"
+          git add "${{ github.event.inputs.folder }}" upload_times.txt
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
 
