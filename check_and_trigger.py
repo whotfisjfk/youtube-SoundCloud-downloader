@@ -8,39 +8,72 @@ LOG_URL = "https://raw.githubusercontent.com/alipoorkaramali/youtube-news-watche
 
 # فایل محلی برای ردگیری لینک‌های پردازش‌شده
 STATE_FILE = "processed.txt"
+# فایل محلی برای ردگیری عناوین دانلودشده (جلوگیری از تکراری بین پلتفرم‌ها)
+TITLE_STATE_FILE = "processed_titles.txt"
 
 # اطلاعات مخزن اول برای فراخوانی workflow
 REPO_OWNER = "alipoorkaramali"
 REPO_NAME = "youtube-SoundCloud-downloader"
-WORKFLOW_FILE = "Multi-Platform Downloader-auto.yml"   # ← اصلاح‌شده
+WORKFLOW_FILE = "Multi-Platform Downloader-auto.yml"
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 
-def get_processed():
+# 📁 پوشهٔ ذخیره‌سازی برای دانلودهای خودکار (جدا از دانلودهای دستی)
+AUTO_FOLDER = "audio_downloads"
+
+
+def load_processed_hashes():
     if not Path(STATE_FILE).exists():
         return set()
     with open(STATE_FILE) as f:
         return set(line.strip() for line in f if line.strip())
 
-def save_processed(hashes):
+
+def save_processed_hashes(hashes):
     with open(STATE_FILE, "w") as f:
         for h in hashes:
             f.write(h + "\n")
 
-def extract_url(line: str) -> str | None:
+
+def load_processed_titles():
+    if not Path(TITLE_STATE_FILE).exists():
+        return set()
+    with open(TITLE_STATE_FILE, encoding='utf-8') as f:
+        return set(line.strip() for line in f if line.strip())
+
+
+def add_processed_title(title):
+    with open(TITLE_STATE_FILE, "a", encoding='utf-8') as f:
+        f.write(title + "\n")
+
+
+def extract_info(line: str):
     """
-    خطوط به یکی از این دو فرمت هستند:
-    1. قدیمی (یوتیوب): timestamp | title | rel_time | url
-    2. جدید (ساندکلاد): timestamp | platform | title (ممکن است خود شامل | باشد) | rel_time | url
-    برای استخراج امن، از rsplit با محدودیت ۳ بار تقسیم از سمت راست استفاده می‌کنیم
-    تا url و rel_time جدا شوند و مابقی خط (که شامل title است) دست‌نخورده باقی بماند.
+    خطوط لاگ جدید:
+    timestamp | platform | عنوان (ممکن است شامل | باشد) | relative_time | url
+    خروجی: (platform, title, url) یا None
     """
-    parts = line.rsplit(" | ", 3)  # حداکثر ۳ بار از سمت راست تقسیم می‌کند
-    if len(parts) == 4:
+    parts = line.split(" | ")
+    if len(parts) < 4:
+        return None
+
+    platform = parts[1].strip()
+    # اگر platform غیر از youtube/soundcloud بود، بر اساس URL حدس بزن
+    if platform not in ("youtube", "soundcloud"):
         url = parts[-1].strip()
-        relative_time = parts[-2].strip()
-        if url.startswith("https://www.youtube.com/watch") or url.startswith("https://soundcloud.com/"):
-            return url
-    return None
+        if "youtube.com" in url:
+            platform = "youtube"
+        elif "soundcloud.com" in url:
+            platform = "soundcloud"
+        else:
+            return None
+
+    url = parts[-1].strip()
+    # عنوان = همهٔ بخش‌ها از ایندکس ۲ تا یکی‌مانده‌به‌آخر
+    title_parts = parts[2:-1]
+    title = " | ".join(title_parts).strip() if title_parts else None
+
+    return (platform, title, url)
+
 
 def trigger_download(video_url: str):
     workflow_id = requests.utils.quote(WORKFLOW_FILE, safe='')
@@ -58,14 +91,17 @@ def trigger_download(video_url: str):
             "platform": "youtube" if "youtube.com" in video_url else "soundcloud",
             "url": video_url,
             "format": "audio",
-            "folder": "downloads"
+            "folder": AUTO_FOLDER          # <-- ذخیره در audio_downloads
         }
     }
     resp = requests.post(url, headers=headers, json=payload)
     if resp.status_code == 204:
         print(f"✅ دانلود آغاز شد: {video_url}")
+        return True
     else:
         print(f"❌ خطا برای {video_url}: {resp.status_code} {resp.text}")
+        return False
+
 
 def main():
     resp = requests.get(LOG_URL)
@@ -74,28 +110,50 @@ def main():
         return
 
     lines = [line.strip() for line in resp.text.splitlines() if line.strip()]
-    processed_hashes = get_processed()
-    new_hashes = []
+    processed_hashes = load_processed_hashes()
+    processed_titles = load_processed_titles()
+
+    new_count = 0
 
     for line in lines:
-        video_url = extract_url(line)
-        if not video_url:
-            print(f"⚠️ نتوانستم لینکی از خط زیر استخراج کنم:\n{line}")
+        info = extract_info(line)
+        if info is None:
+            print(f"⚠️ نتوانستم اطلاعات را از خط زیر استخراج کنم:\n{line}")
             continue
 
+        platform, title, video_url = info
+
+        # 1. بررسی تکراری بودن URL
         link_hash = hashlib.md5(video_url.encode()).hexdigest()
         if link_hash in processed_hashes:
             continue
 
-        trigger_download(video_url)
-        processed_hashes.add(link_hash)
-        new_hashes.append(link_hash)
+        # 2. بررسی تکراری بودن عنوان (جلوگیری از دانلود تکراری بین پلتفرم‌ها)
+        if title and title in processed_titles:
+            print(f"⏭️ عنوان تکراری از منبع دیگر («{title}») - دانلود نمی‌شود.")
+            # لینک را هم به عنوان پردازش‌شده علامت بزنیم
+            processed_hashes.add(link_hash)
+            continue
 
-    if new_hashes:
-        save_processed(processed_hashes)
-        print(f"🎉 {len(new_hashes)} ویدیوی جدید پردازش شد.")
+        print(f"🎧 پردازش {video_url} (platform={platform}, title={title})")
+        success = trigger_download(video_url)
+
+        if success:
+            processed_hashes.add(link_hash)
+            if title:
+                processed_titles.add(title)
+                add_processed_title(title)   # بلافاصله در فایل ذخیره شود
+            new_count += 1
+        # در صورت شکست، لینک را ذخیره نمی‌کنیم (برای تلاش مجدد در اجرای بعدی)
+
+    # ذخیره وضعیت نهایی هش‌ها
+    save_processed_hashes(processed_hashes)
+
+    if new_count:
+        print(f"🎉 {new_count} ویدیوی جدید پردازش شد.")
     else:
         print("🔄 ویدیوی جدیدی برای پردازش وجود ندارد.")
+
 
 if __name__ == "__main__":
     main()
