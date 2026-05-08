@@ -136,7 +136,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git stash push --include-untracked
           git pull --rebase origin main
+          git stash pop || true
           git add "${{ github.event.inputs.folder }}"
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
