@@ -11,7 +11,7 @@ TITLE_STATE_FILE = "processed_titles.txt"
 DEST_FOLDER = "audio_downloads"
 
 # ---------- تنظیمات فراخوانی ورک‌فلو ----------
-TARGET_WORKFLOW_FILENAME = "multi-platform-downloader.yml"
+TARGET_WORKFLOW_FILENAME = "Multi-Platform Downloader-auto.yml"
 REPO = os.environ.get("GITHUB_REPOSITORY", "alipoorkaramali/youtube-news-watcher")
 GITHUB_TOKEN = os.environ.get("WORKFLOW_DISPATCH_TOKEN")
 REF = "main"
