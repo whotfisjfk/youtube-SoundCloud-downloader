@@ -1,4 +1,4 @@
-name: Check RSS Log and Trigger Downloads
+name: 🔎Check RSS Log and Trigger Downloads
 
 on:
   schedule:
