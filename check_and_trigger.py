@@ -12,7 +12,7 @@ STATE_FILE = "processed.txt"
 # اطلاعات مخزن اول برای فراخوانی workflow
 REPO_OWNER = "alipoorkaramali"
 REPO_NAME = "youtube-SoundCloud-downloader"
-WORKFLOW_FILE = "Multi-Platform Downloader.yml"
+WORKFLOW_FILE = "Multi-Platform Downloader-auto.yml"   # ← اصلاح‌شده
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 
 def get_processed():
@@ -36,12 +36,8 @@ def extract_url(line: str) -> str | None:
     """
     parts = line.rsplit(" | ", 3)  # حداکثر ۳ بار از سمت راست تقسیم می‌کند
     if len(parts) == 4:
-        # آخرین بخش همیشه URL است
         url = parts[-1].strip()
-        # بخش سوم rel_time است
         relative_time = parts[-2].strip()
-        # تمام بخش‌های قبلی (timestamp [| platform] | title) هستند
-        # چک می‌کنیم که URL معتبر باشد
         if url.startswith("https://www.youtube.com/watch") or url.startswith("https://soundcloud.com/"):
             return url
     return None
