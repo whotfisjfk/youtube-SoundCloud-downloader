@@ -39,16 +39,8 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: 🍪 بازسازی دقیق فایل کوکی از Secret
-        run: |
-          python -c "
-          import os
-          cookie_data = os.environ['COOKIE_SECRET']
-          with open('cookies.txt', 'w', encoding='utf-8', newline='') as f:
-              f.write(cookie_data)
-          "
-        env:
-          COOKIE_SECRET: ${{ secrets.COOKIES_TXT }}
+      # 🔥 مرحله‌ی ساخت کوکی از Secret کاملاً حذف شده.
+      # حالا yt-dlp فایل cookies.txt رو مستقیم از مخزن می‌خونه.
 
       - name: 🔧 نصب ffmpeg
         run: |
@@ -147,7 +139,7 @@ jobs:
       - name: 🕒 ثبت زمان آپلود فایل‌های جدید
         run: python record_upload_time.py "${{ github.event.inputs.folder }}"
 
-      # ================= ذخیره در مخزن (فایل جدید + upload_times.txt) =================
+      # ================= ذخیره در مخزن =================
       - name: 🚀 ثبت فایل‌ها در مخزن
         run: |
           git config user.name "github-actions[bot]"
@@ -159,8 +151,8 @@ jobs:
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
 
-      # ================= پاکسازی فایل‌های قدیمی (بیش از ۱۲ ساعت) =================
-      - name: 🧹 پاکسازی فایل‌های صوتی کهنه
+      # ================= پاکسازی فایل‌های قدیمی (بیش از ۲۴ ساعت) =================
+      - name: 🧹 پاکسازی فایل‌های صوتی کهنه (بیش از ۲۴ ساعت)
         run: python cleanup_audio.py
 
       - name: 📌 ذخیره‌سازی حذف‌ها (در صورت وجود)
@@ -171,7 +163,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "هیچ تغییر جدیدی برای commit وجود ندارد."
           else
-            git commit -m "پاکسازی فایل‌های صوتی قدیمی (>12h)"
+            git commit -m "پاکسازی فایل‌های صوتی قدیمی (>24h)"
             git push
           fi
 
