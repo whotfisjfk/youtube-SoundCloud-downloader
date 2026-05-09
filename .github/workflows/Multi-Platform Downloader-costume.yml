@@ -1,4 +1,4 @@
-name: 🎬🎵 NEW2.1-costume👋-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
+name: 🎬🎵 NEW2-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
 
 on:
   workflow_dispatch:
@@ -39,6 +39,7 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
+      # ============= نصب ابزارها =============
       - name: 🔧 نصب ffmpeg
         run: |
           sudo apt-get update
@@ -50,15 +51,9 @@ jobs:
           ejs-node: true
           aria2: true
 
-      - name: 🧹 پاکسازی فایل‌های قدیمی‌تر از ۱۲ ساعت
-        run: |
-          FOLDER="${{ github.event.inputs.folder }}"
-          if [ -d "$FOLDER" ]; then
-            echo "پاکسازی فایل‌های با قدمت بیش از ۱۲ ساعت در پوشهٔ $FOLDER"
-            find "$FOLDER" -type f -mmin +720 -exec rm -v {} \;
-          else
-            echo "پوشهٔ $FOLDER وجود ندارد، چیزی برای پاکسازی نیست."
-          fi
+      - name: 🧹 پاکسازی پوشهٔ دانلود (فقط برای دانلودهای دستی)
+        if: github.event.inputs.folder != 'audio_downloads'
+        run: rm -rf "${{ github.event.inputs.folder }}"/*
 
       # ================= YouTube =================
       - name: ▶️ یوتیوب | دانلود ویدئو (MP4)
@@ -68,6 +63,10 @@ jobs:
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
             --cookies cookies.txt \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             --force-overwrites \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
@@ -80,6 +79,10 @@ jobs:
             --audio-format mp3 \
             --audio-quality 0 \
             --cookies cookies.txt \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             --force-overwrites \
             --no-playlist \
             "${{ github.event.inputs.url }}" \
@@ -93,6 +96,10 @@ jobs:
           yt-dlp -x --audio-format mp3 --audio-quality 0 \
             --no-playlist \
             --force-ipv4 \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -102,31 +109,63 @@ jobs:
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f bestvideo+bestaudio/best --merge-output-format mp4 \
             --no-playlist \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
-      # ================= بسته‌بندی ویدئوهای بزرگ به ZIP چندبخشی =================
+      # ================= بسته‌بندی ویدئوهای بزرگ =================
       - name: ✂️ تبدیل ویدئوهای بزرگ به ZIP چندبخشی
+        if: github.event.inputs.format == 'video'
         run: |
           FOLDER="${{ github.event.inputs.folder }}"
           for video in "$FOLDER"/*.mp4; do
             [ -e "$video" ] || continue
             SIZE=$(stat -c%s "$video")
-            if [ "$SIZE" -gt 94371840 ]; then   # بزرگتر از 90MB
+            if [ "$SIZE" -gt 94371840 ]; then
               BASENAME=$(basename "$video" .mp4)
               ZIPNAME="$FOLDER/${BASENAME}.zip"
               echo "بسته‌بندی $video ($(numfmt --to=iec $SIZE)) در $ZIPNAME ..."
-              zip -s 90m -j "$ZIPNAME" "$video"   # -j یعنی مسیر ذخیره نشود
-              rm "$video"   # حذف فایل اصلی بزرگ
-              echo "✅ فایل به قطعات ZIP تقسیم شد. برای بازیابی، همهٔ قطعات را دانلود کرده و فایل .zip را با WinRAR باز کنید." > "$FOLDER/${BASENAME}_README.txt"
+              zip -s 90m -j "$ZIPNAME" "$video"
+              rm "$video"
+              echo "✅ فایل به قطعات ZIP تقسیم شد." > "$FOLDER/${BASENAME}_README.txt"
             fi
           done
+
+      # ================= ثبت زمان آپلود =================
+      - name: 🕒 ثبت زمان آپلود فایل‌های جدید
+        run: python record_upload_time.py "${{ github.event.inputs.folder }}"
 
       # ================= ذخیره در مخزن =================
       - name: 🚀 ثبت فایل‌ها در مخزن
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ github.event.inputs.folder }}"
+          git stash push --include-untracked
+          git pull --rebase origin main
+          git stash pop || true
+          git add "${{ github.event.inputs.folder }}" upload_times.txt
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
+
+      # ================= انتشار در Release =================
+      - name: 📦 انتشار در Release (فایل‌های کوچک)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE=$(find "${{ github.event.inputs.folder }}" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.mp4" \) 2>/dev/null | head -1)
+          if [ -z "$FILE" ]; then
+            echo "فایل یکپارچه‌ای یافت نشد."
+            exit 0
+          fi
+          echo "آپلود فایل یکپارچه: $FILE"
+          if gh release view latest &> /dev/null; then
+            gh release upload latest "$FILE" --clobber
+          else
+            gh release create latest "$FILE" \
+              --title "مجموعه دانلودهای چندمنظوره" \
+              --notes "فایل‌های یکپارچه (زیر 90MB) اینجا قرار می‌گیرند."
+          fi
+          echo "📎 لینک Release: https://github.com/${{ github.repository }}/releases/tag/latest"
