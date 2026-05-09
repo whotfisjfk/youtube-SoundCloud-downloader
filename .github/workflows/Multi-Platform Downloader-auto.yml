@@ -39,8 +39,16 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      - name: 🍪 ایجاد فایل کوکی از Secret
-        run: echo "${{ secrets.COOKIES_TXT }}" > cookies.txt
+      - name: 🍪 بازسازی دقیق فایل کوکی از Secret
+        run: |
+          python -c "
+          import os
+          cookie_data = os.environ['COOKIE_SECRET']
+          with open('cookies.txt', 'w', encoding='utf-8', newline='') as f:
+              f.write(cookie_data)
+          "
+        env:
+          COOKIE_SECRET: ${{ secrets.COOKIES_TXT }}
 
       - name: 🔧 نصب ffmpeg
         run: |
@@ -139,7 +147,7 @@ jobs:
       - name: 🕒 ثبت زمان آپلود فایل‌های جدید
         run: python record_upload_time.py "${{ github.event.inputs.folder }}"
 
-      # ================= ذخیره در مخزن =================
+      # ================= ذخیره در مخزن (فایل جدید + upload_times.txt) =================
       - name: 🚀 ثبت فایل‌ها در مخزن
         run: |
           git config user.name "github-actions[bot]"
@@ -151,6 +159,22 @@ jobs:
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
 
+      # ================= پاکسازی فایل‌های قدیمی (بیش از ۱۲ ساعت) =================
+      - name: 🧹 پاکسازی فایل‌های صوتی کهنه
+        run: python cleanup_audio.py
+
+      - name: 📌 ذخیره‌سازی حذف‌ها (در صورت وجود)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "هیچ تغییر جدیدی برای commit وجود ندارد."
+          else
+            git commit -m "پاکسازی فایل‌های صوتی قدیمی (>12h)"
+            git push
+          fi
+
       # ================= انتشار در Release (فقط برای فایل‌های یکپارچه) =================
       - name: 📦 انتشار در Release (فایل‌های کوچک)
         env:
@@ -158,7 +182,7 @@ jobs:
         run: |
           FILE=$(find "${{ github.event.inputs.folder }}" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.mp4" \) 2>/dev/null | head -1)
           if [ -z "$FILE" ]; then
-            echo "فایل شکسته شده است؛ از Release صرف‌نظر می‌شود. قطعات را از پوشه دانلود کنید."
+            echo "فایل یکپارچه‌ای یافت نشد؛ از انتشار صرف‌نظر می‌شود."
             exit 0
           fi
           echo "آپلود فایل یکپارچه: $FILE"
