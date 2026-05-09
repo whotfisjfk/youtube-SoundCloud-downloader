@@ -1,4 +1,4 @@
-name: 👋🎬🎵 NEW2-costume-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
+name: 🎬🎵 NEW2.1-costume👋-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
 
 on:
   workflow_dispatch:
@@ -50,8 +50,15 @@ jobs:
           ejs-node: true
           aria2: true
 
-      - name: 🧹 پاکسازی پوشهٔ دانلود
-        run: rm -rf "${{ github.event.inputs.folder }}"/*
+      - name: 🧹 پاکسازی فایل‌های قدیمی‌تر از ۱۲ ساعت
+        run: |
+          FOLDER="${{ github.event.inputs.folder }}"
+          if [ -d "$FOLDER" ]; then
+            echo "پاکسازی فایل‌های با قدمت بیش از ۱۲ ساعت در پوشهٔ $FOLDER"
+            find "$FOLDER" -type f -mmin +720 -exec rm -v {} \;
+          else
+            echo "پوشهٔ $FOLDER وجود ندارد، چیزی برای پاکسازی نیست."
+          fi
 
       # ================= YouTube =================
       - name: ▶️ یوتیوب | دانلود ویدئو (MP4)
@@ -61,10 +68,6 @@ jobs:
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
             --cookies cookies.txt \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            --sleep-interval 5 \
-            --max-sleep-interval 15 \
-            --sleep-requests 2 \
             --force-overwrites \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
@@ -77,10 +80,6 @@ jobs:
             --audio-format mp3 \
             --audio-quality 0 \
             --cookies cookies.txt \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            --sleep-interval 5 \
-            --max-sleep-interval 15 \
-            --sleep-requests 2 \
             --force-overwrites \
             --no-playlist \
             "${{ github.event.inputs.url }}" \
@@ -94,10 +93,6 @@ jobs:
           yt-dlp -x --audio-format mp3 --audio-quality 0 \
             --no-playlist \
             --force-ipv4 \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            --sleep-interval 5 \
-            --max-sleep-interval 15 \
-            --sleep-requests 2 \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -107,10 +102,6 @@ jobs:
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f bestvideo+bestaudio/best --merge-output-format mp4 \
             --no-playlist \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            --sleep-interval 5 \
-            --max-sleep-interval 15 \
-            --sleep-requests 2 \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -139,23 +130,3 @@ jobs:
           git add "${{ github.event.inputs.folder }}"
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
-
-      # ================= انتشار در Release (فقط برای فایل‌های یکپارچه) =================
-      - name: 📦 انتشار در Release (فایل‌های کوچک)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          FILE=$(find "${{ github.event.inputs.folder }}" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.mp4" \) 2>/dev/null | head -1)
-          if [ -z "$FILE" ]; then
-            echo "فایل شکسته شده است؛ از Release صرف‌نظر می‌شود. قطعات را از پوشه دانلود کنید."
-            exit 0
-          fi
-          echo "آپلود فایل یکپارچه: $FILE"
-          if gh release view latest &> /dev/null; then
-            gh release upload latest "$FILE" --clobber
-          else
-            gh release create latest "$FILE" \
-              --title "مجموعه دانلودهای چندمنظوره" \
-              --notes "فایل‌های یکپارچه (زیر 90MB) اینجا قرار می‌گیرند."
-          fi
-          echo "📎 لینک Release: https://github.com/${{ github.repository }}/releases/tag/latest"
