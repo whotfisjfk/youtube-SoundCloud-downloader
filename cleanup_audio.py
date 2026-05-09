@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 FOLDER = "audio_downloads"          # پوشه‌ای که فایل‌های خودکار در آن ذخیره می‌شوند
 TIMES_FILE = "upload_times.txt"
-MAX_HOURS = 12
+MAX_HOURS = 24
 
 now = datetime.now(timezone.utc)
 cutoff = now - timedelta(hours=MAX_HOURS)
