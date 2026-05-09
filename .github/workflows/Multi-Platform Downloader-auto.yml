@@ -15,13 +15,12 @@ on:
         description: '🔗 لینک ویدئو / آهنگ'
         required: true
       format:
-        description: '🎬 خروجی'
+        description: '🎬 خروجی (فقط صوت)'
         required: true
-        default: 'video'
+        default: 'audio'
         type: choice
         options:
-          - 'video'
-          - 'audio'
+          - 'audio'                # فقط صوت
       folder:
         description: '📁 پوشهٔ ذخیره'
         required: false
@@ -39,9 +38,7 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
-      # 🔥 مرحله‌ی ساخت کوکی از Secret کاملاً حذف شده.
-      # حالا yt-dlp فایل cookies.txt رو مستقیم از مخزن می‌خونه.
-
+      # ============= نصب ابزارها =============
       - name: 🔧 نصب ffmpeg
         run: |
           sudo apt-get update
@@ -53,28 +50,14 @@ jobs:
           ejs-node: true
           aria2: true
 
+      # ============= پاک‌سازی (فقط برای پوشه‌های غیر از audio_downloads) =============
       - name: 🧹 پاکسازی پوشهٔ دانلود (فقط برای دانلودهای دستی)
         if: github.event.inputs.folder != 'audio_downloads'
         run: rm -rf "${{ github.event.inputs.folder }}"/*
 
-      # ================= YouTube =================
-      - name: ▶️ یوتیوب | دانلود ویدئو (MP4)
-        if: github.event.inputs.platform == 'youtube' && github.event.inputs.format == 'video'
-        run: |
-          mkdir -p "${{ github.event.inputs.folder }}"
-          yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
-            --merge-output-format mp4 \
-            --cookies cookies.txt \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            --sleep-interval 5 \
-            --max-sleep-interval 15 \
-            --sleep-requests 2 \
-            --force-overwrites \
-            "${{ github.event.inputs.url }}" \
-            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
-
+      # ================= YouTube (فقط صوت) =================
       - name: ▶️ یوتیوب | دانلود صوت (MP3)
-        if: github.event.inputs.platform == 'youtube' && github.event.inputs.format == 'audio'
+        if: github.event.inputs.platform == 'youtube'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f "bestaudio[ext=m4a]/bestaudio/best" \
@@ -90,9 +73,9 @@ jobs:
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
-      # ================= SoundCloud =================
+      # ================= SoundCloud (فقط صوت) =================
       - name: ☁️ ساندکلاد | دانلود صوت (MP3)
-        if: github.event.inputs.platform == 'soundcloud' && github.event.inputs.format == 'audio'
+        if: github.event.inputs.platform == 'soundcloud'
         run: |
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -x --audio-format mp3 --audio-quality 0 \
@@ -105,21 +88,9 @@ jobs:
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
-      - name: ☁️ ساندکلاد | دانلود ویدئو (در صورت وجود)
-        if: github.event.inputs.platform == 'soundcloud' && github.event.inputs.format == 'video'
-        run: |
-          mkdir -p "${{ github.event.inputs.folder }}"
-          yt-dlp -f bestvideo+bestaudio/best --merge-output-format mp4 \
-            --no-playlist \
-            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
-            --sleep-interval 5 \
-            --max-sleep-interval 15 \
-            --sleep-requests 2 \
-            "${{ github.event.inputs.url }}" \
-            -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
-
-      # ================= بسته‌بندی ویدئوهای بزرگ به ZIP چندبخشی =================
-      - name: ✂️ تبدیل ویدئوهای بزرگ به ZIP چندبخشی
+      # ================= بسته‌بندی ویدئوهای بزرگ (در اینجا صوتی‌ها بزرگ نمی‌شوند، ولی احتیاطی) =================
+      - name: ✂️ تبدیل فایل‌های بزرگ به ZIP چندبخشی
+        if: github.event.inputs.format == 'video'   # اینجا هیچ‌وقت اجرا نمی‌شود؛ فقط برای ساختار
         run: |
           FOLDER="${{ github.event.inputs.folder }}"
           for video in "$FOLDER"/*.mp4; do
@@ -131,11 +102,11 @@ jobs:
               echo "بسته‌بندی $video ($(numfmt --to=iec $SIZE)) در $ZIPNAME ..."
               zip -s 90m -j "$ZIPNAME" "$video"
               rm "$video"
-              echo "✅ فایل به قطعات ZIP تقسیم شد. برای بازیابی، همهٔ قطعات را دانلود کرده و فایل .zip را با WinRAR باز کنید." > "$FOLDER/${BASENAME}_README.txt"
+              echo "✅ فایل به قطعات ZIP تقسیم شد." > "$FOLDER/${BASENAME}_README.txt"
             fi
           done
 
-      # ================= ثبت زمان آپلود برای فایل‌های جدید =================
+      # ================= ثبت زمان آپلود =================
       - name: 🕒 ثبت زمان آپلود فایل‌های جدید
         run: python record_upload_time.py "${{ github.event.inputs.folder }}"
 
@@ -151,7 +122,7 @@ jobs:
           git commit -m "افزودن فایل از ${{ github.event.inputs.platform }}" || echo "هیچ فایل جدیدی نیست"
           git push
 
-      # ================= پاکسازی فایل‌های قدیمی (بیش از ۲۴ ساعت) =================
+      # ================= پاکسازی فایل‌های قدیمی (فقط audio_downloads) =================
       - name: 🧹 پاکسازی فایل‌های صوتی کهنه (بیش از ۲۴ ساعت)
         run: python cleanup_audio.py
 
@@ -167,7 +138,7 @@ jobs:
             git push
           fi
 
-      # ================= انتشار در Release (فقط برای فایل‌های یکپارچه) =================
+      # ================= انتشار در Release =================
       - name: 📦 انتشار در Release (فایل‌های کوچک)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
