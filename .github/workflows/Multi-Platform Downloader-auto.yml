@@ -1,7 +1,31 @@
 name: 🎬🎵⚙️ NEW2-auto-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
 
 on:
-  workflow_dispatch:       # فقط از طریق API یا gh workflow run
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: '🌐 پلتفرم'
+        required: true
+        default: 'youtube'
+        type: choice
+        options:
+          - 'youtube'
+          - 'soundcloud'
+      url:
+        description: '🔗 لینک ویدئو / آهنگ'
+        required: true
+      format:
+        description: '🎬 خروجی'
+        required: true
+        default: 'video'
+        type: choice
+        options:
+          - 'video'
+          - 'audio'
+      folder:
+        description: '📁 پوشهٔ ذخیره'
+        required: false
+        default: 'downloads'
 
 jobs:
   download:
@@ -29,7 +53,6 @@ jobs:
           ejs-node: true
           aria2: true
 
-      # پاک‌سازی فقط برای دانلودهای دستی (پیش‌فرض download) و نه پوشه audio_downloads
       - name: 🧹 پاکسازی پوشهٔ دانلود (فقط برای دانلودهای دستی)
         if: github.event.inputs.folder != 'audio_downloads'
         run: rm -rf "${{ github.event.inputs.folder }}"/*
@@ -102,12 +125,12 @@ jobs:
           for video in "$FOLDER"/*.mp4; do
             [ -e "$video" ] || continue
             SIZE=$(stat -c%s "$video")
-            if [ "$SIZE" -gt 94371840 ]; then   # بزرگتر از 90MB
+            if [ "$SIZE" -gt 94371840 ]; then
               BASENAME=$(basename "$video" .mp4)
               ZIPNAME="$FOLDER/${BASENAME}.zip"
               echo "بسته‌بندی $video ($(numfmt --to=iec $SIZE)) در $ZIPNAME ..."
-              zip -s 90m -j "$ZIPNAME" "$video"   # -j یعنی مسیر ذخیره نشود
-              rm "$video"   # حذف فایل اصلی بزرگ
+              zip -s 90m -j "$ZIPNAME" "$video"
+              rm "$video"
               echo "✅ فایل به قطعات ZIP تقسیم شد. برای بازیابی، همهٔ قطعات را دانلود کرده و فایل .zip را با WinRAR باز کنید." > "$FOLDER/${BASENAME}_README.txt"
             fi
           done
