@@ -1,4 +1,4 @@
-name: 🎬🎵👋 NEW2-costume-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
+name: 👋🎬🎵 NEW2-costume-Multi-Platform Downloader (YouTube + SoundCloud + Split to ZIP)
 
 on:
   workflow_dispatch:
@@ -61,6 +61,10 @@ jobs:
           yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
             --merge-output-format mp4 \
             --cookies cookies.txt \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             --force-overwrites \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
@@ -73,6 +77,10 @@ jobs:
             --audio-format mp3 \
             --audio-quality 0 \
             --cookies cookies.txt \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             --force-overwrites \
             --no-playlist \
             "${{ github.event.inputs.url }}" \
@@ -86,6 +94,10 @@ jobs:
           yt-dlp -x --audio-format mp3 --audio-quality 0 \
             --no-playlist \
             --force-ipv4 \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
@@ -95,6 +107,10 @@ jobs:
           mkdir -p "${{ github.event.inputs.folder }}"
           yt-dlp -f bestvideo+bestaudio/best --merge-output-format mp4 \
             --no-playlist \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+            --sleep-interval 5 \
+            --max-sleep-interval 15 \
+            --sleep-requests 2 \
             "${{ github.event.inputs.url }}" \
             -o "${{ github.event.inputs.folder }}/%(title)s.%(ext)s"
 
