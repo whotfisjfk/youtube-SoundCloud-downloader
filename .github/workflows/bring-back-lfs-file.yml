@@ -60,7 +60,7 @@ jobs:
           echo "NEW_FILE=$FILE" >> $GITHUB_ENV
           echo "NEW_FILENAME=$(basename "$FILE")" >> $GITHUB_ENV
 
-      - name: 🚀 جایگزینی اشاره‌گر LFS با فایل واقعی و commit
+      - name: 🚀 جایگزینی و ارسال (با rebase ایمن)
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
@@ -70,8 +70,12 @@ jobs:
           # حذف اشاره‌گر LFS قدیمی
           git rm "$FILE"
           
-          # افزودن فایل جدید (واقعی)
+          # افزودن فایل جدید واقعی
           git add "${{ env.NEW_FILE }}"
           
           git commit -m "✅ Replace LFS pointer of '$(basename "$FILE")' with actual MP3 file"
+          
+          # دریافت تغییرات ریموت و بازنویسی ایمن
+          git pull --rebase origin main
+          
           git push origin main
