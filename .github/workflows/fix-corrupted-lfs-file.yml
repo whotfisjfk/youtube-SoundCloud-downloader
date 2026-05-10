@@ -1,0 +1,60 @@
+name: 🔧 Fix corrupted LFS file (replace with original)
+
+on:
+  workflow_dispatch:
+    inputs:
+      filepath:
+        description: 'مسیر فایل خراب شده (همان که قبلاً وارد کردید)'
+        required: true
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout with full history and LFS
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: 🛠️ Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: 🔍 Restore original LFS pointer and pull real file
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          echo "📁 بازیابی اشاره‌گر سالم از کامیت قبلی..."
+          rm -f "$FILE"
+          git restore --source=HEAD~1 "$FILE"
+          echo "✅ اشاره‌گر سالم بازیابی شد."
+
+          echo "📥 دریافت فایل واقعی از LFS..."
+          git lfs fetch --include="$FILE"
+          git lfs checkout "$FILE"
+          echo "✅ فایل اصلی دریافت شد."
+          ls -lah "$FILE"
+
+      - name: 🚀 Commit and push the fixed file
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add "$FILE"
+
+          # بررسی کنیم آیا تغییر واقعی وجود دارد
+          if git diff --staged --quiet; then
+            echo "ℹ️ فایل از قبل سالم بود، نیازی به commit نیست."
+          else
+            git commit -m "🔧 Restore original LFS file: $(basename "$FILE")"
+            git pull --rebase origin main
+            git push origin main
+            echo "✅ فایل با موفقیت جایگزین شد."
+          fi
