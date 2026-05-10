@@ -1,36 +1,38 @@
-name: 🎵 Extract and download LFS file as MP3
+name: 🔄 Replace LFS file with normal file (MP3)
 
 on:
   workflow_dispatch:
     inputs:
       filepath:
-        description: 'مسیر کامل فایل LFS (نسبت به ریشهٔ مخزن)'
+        description: 'مسیر دقیق فایل LFS که می‌خواهید جایگزین شود (از ریشهٔ مخزن)'
         required: true
-      convert_to_mp3:
-        description: 'تبدیل به MP3؟ (فقط برای فایل‌های صوتی/تصویری)'
+      keep_as_mp3:
+        description: 'تبدیل به MP3 و ذخیره با پسوند mp3؟'
         required: false
-        default: 'true'
+        default: 'yes'
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - 'yes'
+          - 'no'
 
 jobs:
-  extract:
+  replace:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: 📥 Checkout with LFS
+      - name: 📥 دریافت مخزن (با LFS)
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: 🛠️ Install Git LFS & ffmpeg
+      - name: 🛠️ نصب ابزارها
         run: |
           sudo apt-get update
           sudo apt-get install -y git-lfs ffmpeg
           git lfs install
 
-      - name: 📥 Pull the LFS file (real content)
+      - name: 🎯 دریافت فایل واقعی از LFS
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
@@ -39,25 +41,37 @@ jobs:
           git lfs checkout "$FILE"
           ls -lah "$FILE"
 
-      - name: 🎧 Convert to MP3 (optional)
-        if: github.event.inputs.convert_to_mp3 == 'true'
+      - name: 🎵 تبدیل به MP3 (در صورت انتخاب)
+        if: github.event.inputs.keep_as_mp3 == 'yes'
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
           BASENAME=$(basename "$FILE" | sed 's/\.[^.]*$//')
-          OUTPUT="${BASENAME}.mp3"
-          ffmpeg -i "$FILE" -vn -acodec libmp3lame -ab 192k "$OUTPUT"
-          echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
+          NEWFILE="$(dirname "$FILE")/${BASENAME}.mp3"
+          ffmpeg -i "$FILE" -vn -acodec libmp3lame -ab 192k "$NEWFILE"
+          echo "NEW_FILE=$NEWFILE" >> $GITHUB_ENV
+          echo "NEW_FILENAME=$BASENAME.mp3" >> $GITHUB_ENV
 
-      - name: 📁 Use original file (if no conversion)
-        if: github.event.inputs.convert_to_mp3 == 'false'
+      - name: 📁 استفاده از فایل اصلی (بدون تبدیل)
+        if: github.event.inputs.keep_as_mp3 == 'no'
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
-          echo "OUTPUT_FILE=$FILE" >> $GITHUB_ENV
+          echo "NEW_FILE=$FILE" >> $GITHUB_ENV
+          echo "NEW_FILENAME=$(basename "$FILE")" >> $GITHUB_ENV
 
-      - name: 📤 Upload as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: extracted-file
-          path: ${{ env.OUTPUT_FILE }}
+      - name: 🚀 جایگزینی اشاره‌گر LFS با فایل واقعی و commit
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # حذف اشاره‌گر LFS قدیمی
+          git rm "$FILE"
+          
+          # افزودن فایل جدید (واقعی)
+          git add "${{ env.NEW_FILE }}"
+          
+          git commit -m "✅ Replace LFS pointer of '$(basename "$FILE")' with actual MP3 file"
+          git push origin main
