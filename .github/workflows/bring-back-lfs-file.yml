@@ -1,57 +1,63 @@
-name: 📦 Bring back a single file from Git LFS
+name: 🎵 Extract and download LFS file as MP3
 
 on:
   workflow_dispatch:
     inputs:
       filepath:
-        description: 'مسیر کامل فایل نسبت به ریشهٔ مخزن (مثلاً audio_downloads/فایل.mp4)'
+        description: 'مسیر کامل فایل LFS (نسبت به ریشهٔ مخزن)'
         required: true
+      convert_to_mp3:
+        description: 'تبدیل به MP3؟ (فقط برای فایل‌های صوتی/تصویری)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
-  restore-one-file:
+  extract:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: 📥 Checkout repository (با فعال‌سازی LFS)
+      - name: 📥 Checkout with LFS
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: 🛠️ نصب Git LFS
+      - name: 🛠️ Install Git LFS & ffmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y git-lfs
+          sudo apt-get install -y git-lfs ffmpeg
           git lfs install
 
-      - name: 🎯 دریافت فایل واقعی از LFS و جایگزینی اشاره‌گر
+      - name: 📥 Pull the LFS file (real content)
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
-          echo "دریافت فایل: $FILE"
-          # دریافت شیء LFS
+          echo "Fetching $FILE"
           git lfs fetch --include="$FILE"
-          # جایگزین کردن اشاره‌گر با محتوای واقعی
           git lfs checkout "$FILE"
-          echo "فایل واقعی دریافت شد."
+          ls -lah "$FILE"
 
-      - name: 🧩 اضافه کردن قانون اختصاصی برای این فایل که دیگر LFS نشود
+      - name: 🎧 Convert to MP3 (optional)
+        if: github.event.inputs.convert_to_mp3 == 'true'
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
-          # یک خط جدید به .gitattributes اضافه می‌کنیم که فیلتر LFS را فقط برای این فایل خاموش کند
-          echo "$FILE -filter" >> .gitattributes
-          echo "قانون غیرفعال‌سازی LFS برای $FILE اضافه شد."
+          BASENAME=$(basename "$FILE" | sed 's/\.[^.]*$//')
+          OUTPUT="${BASENAME}.mp3"
+          ffmpeg -i "$FILE" -vn -acodec libmp3lame -ab 192k "$OUTPUT"
+          echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
 
-      - name: 🚀 ثبت تغییرات و push
+      - name: 📁 Use original file (if no conversion)
+        if: github.event.inputs.convert_to_mp3 == 'false'
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # افزودن فایل واقعی و .gitattributes
-          git add "$FILE" .gitattributes
-          
-          git commit -m "⬇️ Restore '$FILE' from LFS as regular file"
-          git push origin main
+          echo "OUTPUT_FILE=$FILE" >> $GITHUB_ENV
+
+      - name: 📤 Upload as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-file
+          path: ${{ env.OUTPUT_FILE }}
