@@ -1,0 +1,57 @@
+name: 📦 Bring back a single file from Git LFS
+
+on:
+  workflow_dispatch:
+    inputs:
+      filepath:
+        description: 'مسیر کامل فایل نسبت به ریشهٔ مخزن (مثلاً audio_downloads/فایل.mp4)'
+        required: true
+
+jobs:
+  restore-one-file:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout repository (با فعال‌سازی LFS)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: 🛠️ نصب Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: 🎯 دریافت فایل واقعی از LFS و جایگزینی اشاره‌گر
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          echo "دریافت فایل: $FILE"
+          # دریافت شیء LFS
+          git lfs fetch --include="$FILE"
+          # جایگزین کردن اشاره‌گر با محتوای واقعی
+          git lfs checkout "$FILE"
+          echo "فایل واقعی دریافت شد."
+
+      - name: 🧩 اضافه کردن قانون اختصاصی برای این فایل که دیگر LFS نشود
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          # یک خط جدید به .gitattributes اضافه می‌کنیم که فیلتر LFS را فقط برای این فایل خاموش کند
+          echo "$FILE -filter" >> .gitattributes
+          echo "قانون غیرفعال‌سازی LFS برای $FILE اضافه شد."
+
+      - name: 🚀 ثبت تغییرات و push
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # افزودن فایل واقعی و .gitattributes
+          git add "$FILE" .gitattributes
+          
+          git commit -m "⬇️ Restore '$FILE' from LFS as regular file"
+          git push origin main
