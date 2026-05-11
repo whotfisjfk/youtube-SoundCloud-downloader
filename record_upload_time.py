@@ -16,12 +16,16 @@ if os.path.exists(TIMES_FILE):
                 existing[fname] = time_str
 
 # اضافه کردن فایل‌های جدیدی که در پوشه هستند
-now_iso = datetime.now(timezone.utc).isoformat()
+# اما این بار زمان واقعی ایجاد فایل را می‌خوانیم
 new_entries = []
 for fname in os.listdir(FOLDER):
     if fname in existing:
         continue
-    new_entries.append(f"{fname} | {now_iso}")
+    file_path = os.path.join(FOLDER, fname)
+    # گرفتن زمان آخرین تغییر فایل (همان زمان دانلود)
+    mtime = os.path.getmtime(file_path)
+    file_time = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+    new_entries.append(f"{fname} | {file_time}")
 
 # بازنویسی فایل با ترکیب فایل‌های موجود و جدید
 with open(TIMES_FILE, "w", encoding="utf-8") as f:
