@@ -1,19 +1,19 @@
-name: 🔧 Fix corrupted LFS file (replace with original)
+name: 🛟 Restore original LFS file (find & fix)
 
 on:
   workflow_dispatch:
     inputs:
       filepath:
-        description: 'مسیر فایل خراب شده (همان که قبلاً وارد کردید)'
+        description: 'مسیر فایل خراب شده (همان که قبلاً وارد کرده‌اید)'
         required: true
 
 jobs:
-  fix:
+  restore:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: 📥 Checkout with full history and LFS
+      - name: 📥 Checkout full history + LFS
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -25,36 +25,66 @@ jobs:
           sudo apt-get install -y git-lfs
           git lfs install
 
-      - name: 🔍 Restore original LFS pointer and pull real file
+      - name: 🔍 Find the last good commit containing the file
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
-          echo "📁 بازیابی اشاره‌گر سالم از کامیت قبلی..."
-          rm -f "$FILE"
-          git restore --source=HEAD~1 "$FILE"
-          echo "✅ اشاره‌گر سالم بازیابی شد."
+          echo "🔎 Searching for the last commit where '$FILE' existed..."
+          # پیدا کردن آخرین کامیتی که این فایل را داشت (قبل از خرابی)
+          GOOD_COMMIT=$(git log --all --pretty=format:"%H" -- "$FILE" | head -1)
+          if [ -z "$GOOD_COMMIT" ]; then
+            echo "❌ No commit found with this file. Check the path."
+            exit 1
+          fi
+          echo "✅ Found in commit: $GOOD_COMMIT"
+          echo "GOOD_COMMIT=$GOOD_COMMIT" >> $GITHUB_ENV
 
-          echo "📥 دریافت فایل واقعی از LFS..."
+      - name: 📥 Checkout good commit and pull LFS file
+        env:
+          GOOD_COMMIT: ${{ env.GOOD_COMMIT }}
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          git checkout $GOOD_COMMIT -- "$FILE"
           git lfs fetch --include="$FILE"
           git lfs checkout "$FILE"
-          echo "✅ فایل اصلی دریافت شد."
+          echo "✅ Original file restored to working tree."
           ls -lah "$FILE"
 
-      - name: 🚀 Commit and push the fixed file
+      - name: 🏷️ Copy original file to a safe location
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          mkdir -p /tmp/restored
+          cp "$FILE" /tmp/restored/
+          echo "SAFE=/tmp/restored/$(basename "$FILE")" >> $GITHUB_ENV
+
+      - name: ⏪ Return to main branch
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: 🗑️ Remove corrupted file from working tree and index
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+        run: |
+          rm -f "$FILE"
+          git rm --cached "$FILE" || true   # در صورت وجود در ایندکس
+
+      - name: 📤 Copy back the original file
+        env:
+          FILE: ${{ github.event.inputs.filepath }}
+          SAFE: ${{ env.SAFE }}
+        run: |
+          cp "$SAFE" "$FILE"
+
+      - name: 🚀 Commit and push the restored file
         env:
           FILE: ${{ github.event.inputs.filepath }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add "$FILE"
-
-          # بررسی کنیم آیا تغییر واقعی وجود دارد
-          if git diff --staged --quiet; then
-            echo "ℹ️ فایل از قبل سالم بود، نیازی به commit نیست."
-          else
-            git commit -m "🔧 Restore original LFS file: $(basename "$FILE")"
-            git pull --rebase origin main
-            git push origin main
-            echo "✅ فایل با موفقیت جایگزین شد."
-          fi
+          git commit -m "🧼 Restore original LFS file: $(basename "$FILE")"
+          git pull --rebase origin main
+          git push origin main
+          echo "✅ فایل با موفقیت بازیابی و جایگزین شد."
