@@ -38,13 +38,17 @@ jobs:
       - name: 📥 دریافت فایل‌های مخزن
         uses: actions/checkout@v4
 
+      # ============= نصب ابزارها =============
       - name: 🔧 نصب ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg zip
 
-      - name: ⚙️ نصب yt‑dlp
-        run: pip install -U yt-dlp
+      - name: ⚙️ نصب yt‑dlp با پشتیبانی از چالش‌های JavaScript
+        uses: AnimMouse/setup-yt-dlp@v3
+        with:
+          ejs-node: true
+          aria2: true
 
       # ============= پاک‌سازی (فقط برای پوشه‌های غیر از audio_downloads) =============
       - name: 🧹 پاکسازی پوشهٔ دانلود (فقط برای دانلودهای دستی)
@@ -86,7 +90,7 @@ jobs:
 
       # ================= بسته‌بندی ویدئوهای بزرگ (در اینجا صوتی‌ها بزرگ نمی‌شوند، ولی احتیاطی) =================
       - name: ✂️ تبدیل فایل‌های بزرگ به ZIP چندبخشی
-        if: github.event.inputs.format == 'video'
+        if: github.event.inputs.format == 'video'   # اینجا هیچ‌وقت اجرا نمی‌شود؛ فقط برای ساختار
         run: |
           FOLDER="${{ github.event.inputs.folder }}"
           for video in "$FOLDER"/*.mp4; do
